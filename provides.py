@@ -56,7 +56,9 @@ class TlsProvides(RelationBase):
         # Get the coversation scoped to the unit.
         conversation = self.conversation(scope)
         server = {}
+        # The scope is the unit name, replace the slash with underscore.
         name = scope.replace('/', '_')
+        # Prefix the key with name so each unit can get a unique cert and key.
         server['{0}.server.cert'.format(name)] = cert
         server['{0}.server.key'.format(name)] = key
         # Send the server cert and key to the unit using the conversation.
