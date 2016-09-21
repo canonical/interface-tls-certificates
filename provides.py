@@ -56,8 +56,9 @@ class TlsProvides(RelationBase):
         # Get the coversation scoped to the unit.
         conversation = self.conversation(scope)
         server = {}
-        server['server.cert'] = cert
-        server['server.key'] = key
+        name = scope.replace('/', '_')
+        server['{0}.server.cert'.format(name)] = cert
+        server['{0}.server.key'.format(name)] = key
         # Send the server cert and key to the unit using the conversation.
         conversation.set_remote(data=server)
         # Remove the server.cert.requested state as it is no longer needed.
