@@ -24,12 +24,17 @@ class TlsRequires(RelationBase):
         '''Only the leader should change the state to sign the request. '''
         # Get the global scoped conversation.
         conversation = self.conversation()
+        # When the conversation has a CA set notify that the ca is available.
         if conversation.get_remote('ca'):
             conversation.set_state('{relation_name}.ca.available')
-        if conversation.get_remote('server.cert'):
-            conversation.set_state('{relation_name}.server.cert.available')
+        # When the client.cert has a value notify that the client is available.
         if conversation.get_remote('client.cert'):
             conversation.set_state('{relation_name}.client.cert.available')
+        # Get the name of the unit this code is running on.
+        name = hookenv.local_unit().replace('/', '_')
+        # Prefix the key with the name so each unit is notified cert available.
+        if conversation.get_remote('{0}.server.cert'.format(name)):
+            conversation.set_state('{relation_name}.server.cert.available')
 
     @hook('{provides:tls-certificates}-relation-{broken,departed}')
     def broken_or_departed(self):
@@ -54,7 +59,9 @@ class TlsRequires(RelationBase):
     def get_server_cert(self):
         '''Return the server certificate and key from the relation objects.'''
         conversation = self.conversation()
+        # Get the name of the unit this code is running on.
         name = hookenv.local_unit().replace('/', '_')
+        # Prefix the keys with name so each unit can get unique certs and keys.
         server_cert = conversation.get_remote('{0}.server.cert'.format(name))
         server_key = conversation.get_remote('{0}.server.key'.format(name))
         return server_cert, server_key
