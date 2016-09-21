@@ -1,5 +1,7 @@
 import json
 
+from charmhelpers.core import hookenv
+
 from charms.reactive import hook
 from charms.reactive import scopes
 from charms.reactive import RelationBase
@@ -52,8 +54,9 @@ class TlsRequires(RelationBase):
     def get_server_cert(self):
         '''Return the server certificate and key from the relation objects.'''
         conversation = self.conversation()
-        server_cert = conversation.get_remote('server.cert')
-        server_key = conversation.get_remote('server.key')
+        name = hookenv.local_unit().replace('/', '_')
+        server_cert = conversation.get_remote('{0}.server.cert'.format(name))
+        server_key = conversation.get_remote('{0}.server.key'.format(name))
         return server_cert, server_key
 
     def request_server_cert(self, cn, sans, cert_name):
