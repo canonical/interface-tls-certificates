@@ -74,3 +74,21 @@ class TlsRequires(RelationBase):
         conversation.set_remote('common_name', cn)
         conversation.set_remote('sans', json.dumps(sans))
         conversation.set_remote('certificate_name', cert_name)
+
+    def add_request_server_cert(self, cn, sans):
+        conversation = self.conversation()
+        cert_requests = conversation.get_local('cert_requests')
+
+        if cert_requests:
+            cert_requests[cn] = {'sans': sans}
+        else:
+            cert_requests = {
+                cn: {'sans': sans}}
+        conversation.set_local('cert_requests', cert_requests)
+
+    def request_server_certs(self):
+        conversation = self.conversation()
+        cert_requests = conversation.get_local('cert_requests')
+        conversation.set_remote(
+            'cert_requests',
+            json.dumps(cert_requests, sort_keys=True))
