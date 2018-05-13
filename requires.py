@@ -35,6 +35,8 @@ class TlsRequires(RelationBase):
         # Prefix the key with the name so each unit is notified cert available.
         if conversation.get_remote('{0}.server.cert'.format(name)):
             conversation.set_state('{relation_name}.server.cert.available')
+        if conversation.get_remote('processed_requests'):
+            conversation.set_state('{relation_name}.batch.cert.available')
 
     @hook('{provides:tls-certificates}-relation-{broken,departed}')
     def broken_or_departed(self):
@@ -48,6 +50,13 @@ class TlsRequires(RelationBase):
         conversation = self.conversation()
         # Find the certificate authority by key, and return the value.
         return conversation.get_remote('ca')
+
+    def get_chain(self):
+        '''Return the chain from the relation object.'''
+        # Get the global scoped conversation.
+        conversation = self.conversation()
+        # Find the chain
+        return conversation.get_remote('chain')
 
     def get_client_cert(self):
         '''Return the client certificate and key from the relation object.'''
@@ -92,3 +101,11 @@ class TlsRequires(RelationBase):
         conversation.set_remote(
             'cert_requests',
             json.dumps(cert_requests, sort_keys=True))
+
+    def get_batch_requests(self):
+        conversation = self.conversation()
+        reqs = conversation.get_remote('processed_requests')
+        if reqs:
+            return json.loads(reqs)
+        else:
+            return {}
