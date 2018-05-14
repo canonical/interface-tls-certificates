@@ -35,7 +35,7 @@ class TlsRequires(RelationBase):
         # Prefix the key with the name so each unit is notified cert available.
         if conversation.get_remote('{0}.server.cert'.format(name)):
             conversation.set_state('{relation_name}.server.cert.available')
-        if conversation.get_remote('processed_requests'):
+        if conversation.get_remote('{0}.processed_requests'.format(name)):
             conversation.set_state('{relation_name}.batch.cert.available')
 
     @hook('{provides:tls-certificates}-relation-{broken,departed}')
@@ -104,7 +104,7 @@ class TlsRequires(RelationBase):
 
     def get_batch_requests(self):
         # The scope is the unit name, replace the slash with underscore.
-        name = scope.replace('/', '_')
+        name = hookenv.local_unit().replace('/', '_')
         conversation = self.conversation()
         reqs = conversation.get_remote('{}.processed_requests'.format(name))
         if reqs:
