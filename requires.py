@@ -103,8 +103,10 @@ class TlsRequires(RelationBase):
             json.dumps(cert_requests, sort_keys=True))
 
     def get_batch_requests(self):
+        # The scope is the unit name, replace the slash with underscore.
+        name = scope.replace('/', '_')
         conversation = self.conversation()
-        reqs = conversation.get_remote('processed_requests')
+        reqs = conversation.get_remote('{}.processed_requests'.format(name))
         if reqs:
             return json.loads(reqs)
         else:

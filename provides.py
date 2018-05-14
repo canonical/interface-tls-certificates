@@ -75,10 +75,12 @@ class TlsProvides(RelationBase):
         conversation.remove_state('{relation_name}.server.cert.requested')
 
     def set_server_multicerts(self, scope):
+        # The scope is the unit name, replace the slash with underscore.
+        name = scope.replace('/', '_')
         conversation = self.conversation(scope)
         multi_certs = conversation.get_local('multi_certs')
         conversation.set_remote(
-            'processed_requests',
+            '{}.processed_requests'.format(name),
             json.dumps(multi_certs, sort_keys=True))
         conversation.remove_state('{relation_name}.server.cert.requested')
 
@@ -90,8 +92,6 @@ class TlsProvides(RelationBase):
                     'key': key}}
         '''
         conversation = self.conversation(scope)
-        # The scope is the unit name, replace the slash with underscore.
-        name = scope.replace('/', '_')
         multi_certs = conversation.get_local('multi_certs')
         if multi_certs:
             multi_certs[cn] = {
