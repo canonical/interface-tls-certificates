@@ -35,6 +35,8 @@ class TlsRequires(RelationBase):
         # Prefix the key with the name so each unit is notified cert available.
         if conversation.get_remote('{0}.server.cert'.format(name)):
             conversation.set_state('{relation_name}.server.cert.available')
+        if conversation.get_remote('{0}.processed_requests'.format(name)):
+            conversation.set_state('{relation_name}.batch.cert.available')
 
     @hook('{provides:tls-certificates}-relation-{broken,departed}')
     def broken_or_departed(self):
@@ -48,6 +50,13 @@ class TlsRequires(RelationBase):
         conversation = self.conversation()
         # Find the certificate authority by key, and return the value.
         return conversation.get_remote('ca')
+
+    def get_chain(self):
+        '''Return the chain from the relation object.'''
+        # Get the global scoped conversation.
+        conversation = self.conversation()
+        # Find the chain
+        return conversation.get_remote('chain')
 
     def get_client_cert(self):
         '''Return the client certificate and key from the relation object.'''
@@ -74,3 +83,31 @@ class TlsRequires(RelationBase):
         conversation.set_remote('common_name', cn)
         conversation.set_remote('sans', json.dumps(sans))
         conversation.set_remote('certificate_name', cert_name)
+
+    def add_request_server_cert(self, cn, sans):
+        conversation = self.conversation()
+        cert_requests = conversation.get_local('cert_requests')
+
+        if cert_requests:
+            cert_requests[cn] = {'sans': sans}
+        else:
+            cert_requests = {
+                cn: {'sans': sans}}
+        conversation.set_local('cert_requests', cert_requests)
+
+    def request_server_certs(self):
+        conversation = self.conversation()
+        cert_requests = conversation.get_local('cert_requests')
+        conversation.set_remote(
+            'cert_requests',
+            json.dumps(cert_requests, sort_keys=True))
+
+    def get_batch_requests(self):
+        # The scope is the unit name, replace the slash with underscore.
+        name = hookenv.local_unit().replace('/', '_')
+        conversation = self.conversation()
+        reqs = conversation.get_remote('{}.processed_requests'.format(name))
+        if reqs:
+            return json.loads(reqs)
+        else:
+            return {}
