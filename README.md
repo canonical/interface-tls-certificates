@@ -1,80 +1,84 @@
-# tls-certificates
+# Interface tls-certificates
 
-This is a [Juju](https://jujucharms.com) interface layer that handles the
-transport layer security (TLS) for charms. Using relations between charms.  
-Meaning the charms that use this layer can communicate securely
-with each other based on TLS certificates.
+This is a [Juju][] interface layer that enables a charm which requires TLS
+certificates to relate to a charm which can provide them, such as [Vault][] or
+[EasyRSA][]
 
-To get started please read the
-[Introduction to PKI](https://github.com/OpenVPN/easy-rsa/blob/master/doc/Intro-To-PKI.md)
-which defines some PKI terms, concepts and processes used in this document.
+To get started please read the [Introduction to PKI][] which defines some PKI
+terms, concepts and processes used in this document.
 
-> **NOTE**: It is important to point out that this interface does not do the 
-actual work of issuing certificates. The interface layer only handles the 
-communication between the peers and the charm layer must react to the states 
-correctly for this interface to work.  
+# Example Usage
 
-The [layer-tls](https://github.com/mbruzek/layer-tls) charm layer was created
-to implement this using the [easy-rsa](https://github.com/OpenVPN/easy-rsa)
-project.  This interface could be implemented with other PKI technology tools
-(such as openssl commands) in other charm layers.
+Let's say you have a charm which needs a server certificate for a service it
+provides to other charms and a client certificate for a database it consumes
+from another charm.  The charm provides its own service on the `clients`
+relation endpoint, and it consumes the database on the `db` relation endpoint.
 
-# States
+First, you must define the relation endpoint in your charm's `metadata.yaml`:
 
-The interface layer emits several reactive states that a charm layer can respond
-to:
-
-## {relation_name}.available
-This is the start state that is generated when the relation is joined.
-A charm layer responding to this state should get the common name, a list of 
-Subject Alt Names, and the certificate_name call 
-`request_server_cert(common_name, sans, certificate_name)` on the relation 
-object.
-
-## {relation_name}.ca.available
-The Certificate Authority is available on the relation object when the 
-"{relation_name}.ca.available" state is set. The charm layer can retrieve the
-CA by calling `get_ca()` method on the relationship object.
-
-```python
-from charms.reactive import when
-@when('certificates.ca.available')
-def store_ca(tls):
-    certificate_authority = tls.get_ca()
+```yaml
+requires:
+  cert-provider:
+    interface: tls-certificates
 ```
 
-## {relation_name}.server.cert.available
-Once the server certificate is set on the relation the interface layer will
-emit the "{relation_name}.server.cert.available" state, indicating that the 
-server certificate is available from the relationship object.  The charm layer 
-can retrieve the certificate and use it in the code by calling the
-`get_server_cert()` method on the relationship object.
+Next, you must ensure the interface layer is included in your `layer.yaml`:
 
-```python
-from charms.reactive import when
-@when('certificates.server.cert.available')
-def get_server(tls):
-    server_cert, server_key = tls.get_server_cert()
+```yaml
+includes:
+  - interface:tls-certificates
 ```
 
-## {relation_name}.client.cert.available
-Once the client certificate is set on the relation the interface layer will
-emit the "{relation_name}.client.cert.available" state, indicated that the
-server certificates is available from the relationship object.  The charm layer
-can retrieve the certificate and use it in the code by calling the
-`get_client_cert()` method on the relationship object.
+Then, in your reactive code, add the following, changing `update_certs` to
+handle the certificates however your charm needs:
 
 ```python
-from charms.reactive import when
-@when('certificates.client.cert.available')
-def store_client(tls):
-    client_cert, client_key = tls.get_client_cert()
+from charmhelpers.core import hookenv, host
+from charms.reactive import endpoint_from_flag
+
+
+@when('cert-provider.ca.changed')
+def install_root_ca_cert():
+    cert_provider = endpoint_from_flag('cert-provider.ca.available')
+    host.install_ca_cert(cert_provider.root_ca_cert)
+    clear_flag('cert-provider.ca.changed')
+
+
+@when('cert-provider.available')
+def request_certificates():
+    cert_provider = endpoint_from_flag('cert-provider.available')
+
+    # use first ingress address as primary and any additional as SANs
+    client_ingress = hookenv.network_get('clients')['ingress-addresses']
+    cert_provider.request_server_cert(client_ingress[0], client_ingress[:1])
+
+    db_ingress = hookenv.network_get('db')['ingress-addresses']
+    cert_provider.request_client_cert(db_ingress[0], db_ingress[:1])
+
+
+@when('certificates.certs.changed')
+def update_certs():
+    cert_provider = endpoint_from_flag('cert-provider.available')
+    server_cert = cert_provider.server_certs[0]  # only requested one
+    myserver.update_server_cert(server_cert.cert, server_cert.key)
+
+    client_cert = cert_provider.client_certs[0]  # only requested one
+    myclient.update_client_cert(client_cert.cert, client_cert.key)
+    clear_flag('certificates.certs.changed')
 ```
+
+
+# Reference
+
+  * [Requires](docs/requires.md)
+  * [Provides](docs/provides.md)
 
 # Contact Information
 
-Interface author: Matt Bruzek &lt;Matthew.Bruzek@canonical.com&gt; 
+Maintainer: Cory Johns &lt;Cory.Johns@canonical.com&gt;
 
-Contributor: Charles Butler &lt;Charles.Butler@canonical.com&gt; 
 
-Contributor: Cory Johns &lt;Cory.Johns@canonical.com&gt; 
+[Juju]: https://jujucharms.com
+[Vault]: https://jujucharms.com/u/openstack-charmers/vault
+[EasyRSA]: https://jujucharms.com/u/containers/easyrsa
+[Introduction to PKI]: https://github.com/OpenVPN/easy-rsa/blob/master/doc/Intro-To-PKI.md
