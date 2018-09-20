@@ -1,11 +1,11 @@
 from charmhelpers.core import hookenv
 
 from charms.reactive import when, when_not
-from charms.reactive import set_flag, clear_flag, toggle_flag, is_flag_set
+from charms.reactive import set_flag, clear_flag, toggle_flag
 from charms.reactive import Endpoint
 from charms.reactive import data_changed
 
-from tls_certificates_common import Certificate
+from .tls_certificates_common import Certificate
 
 
 class TlsRequires(Endpoint):

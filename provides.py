@@ -2,7 +2,7 @@ from charms.reactive import Endpoint
 from charms.reactive import when, when_not
 from charms.reactive import set_flag, clear_flag, toggle_flag
 
-from tls_certificates_common import CertificateRequest
+from .tls_certificates_common import CertificateRequest
 
 
 class TlsProvides(Endpoint):
