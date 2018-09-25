@@ -86,6 +86,7 @@ class CertificateRequest(dict):
 
     @property
     def is_handled(self):
+        # TODO: check for change in SANs?
         return self.cert is not None
 
     def set_cert(self, cert, key):

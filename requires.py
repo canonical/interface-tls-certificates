@@ -243,7 +243,8 @@ class TlsRequires(Endpoint):
         The `cert_name` is deprecated and not needed.
 
         This can be called multiple times to request more than one server
-        certificate, although the common names must be unique.
+        certificate, although the common names must be unique.  If called
+        again with the same common name, it will be ignored.
         """
         # assume we'll only be connected to one provider
         to_publish_json = self.relations[0].to_publish
@@ -277,7 +278,8 @@ class TlsRequires(Endpoint):
         common name (`cn`) and list of alternative names (`sans`).
 
         This can be called multiple times to request more than one client
-        certificate, although the common names must be unique.
+        certificate, although the common names must be unique.  If called
+        again with the same common name, it will be ignored.
         """
         # assume we'll only be connected to one provider
         to_publish_json = self.relations[0].to_publish

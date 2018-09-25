@@ -158,7 +158,8 @@ common name (`cn`) and optional list of alternative names (`sans`).
 The `cert_name` is deprecated and not needed.
 
 This can be called multiple times to request more than one server
-certificate, although the common names must be unique.
+certificate, although the common names must be unique.  If called
+again with the same common name, it will be ignored.
 
 <h2 id="requires.TlsRequires.add_request_server_cert">add_request_server_cert</h2>
 
@@ -186,5 +187,6 @@ Request a client certificate and key be generated for the given
 common name (`cn`) and list of alternative names (`sans`).
 
 This can be called multiple times to request more than one client
-certificate, although the common names must be unique.
+certificate, although the common names must be unique.  If called
+again with the same common name, it will be ignored.
 

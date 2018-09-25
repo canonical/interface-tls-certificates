@@ -48,12 +48,18 @@ def install_root_ca_cert():
 def request_certificates():
     cert_provider = endpoint_from_flag('cert-provider.available')
 
-    # use first ingress address as primary and any additional as SANs
-    client_ingress = hookenv.network_get('clients')['ingress-addresses']
-    cert_provider.request_server_cert(client_ingress[0], client_ingress[:1])
+    # get ingress info
+    ingress_for_clients = hookenv.network_get('clients')['ingress-addresses']
+    ingress_for_db = hookenv.network_get('db')['ingress-addresses']
 
-    db_ingress = hookenv.network_get('db')['ingress-addresses']
-    cert_provider.request_client_cert(db_ingress[0], db_ingress[:1])
+    # use first ingress address as primary and any additional as SANs
+    server_cn, server_sans = ingress_for_clients[0], ingress_for_clients[:1]
+    client_cn, client_sans = ingress_for_db[0], ingress_for_db[:1]
+
+    # request a single server and single client cert; note that multiple certs
+    # of either type can be requested as long as they have unique common names
+    cert_provider.request_server_cert(server_cn, server_sans)
+    cert_provider.request_client_cert(client_cn, client_sans)
 
 
 @when('certificates.certs.changed')
