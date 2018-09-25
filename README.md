@@ -62,7 +62,7 @@ def request_certificates():
     cert_provider.request_client_cert(client_cn, client_sans)
 
 
-@when('certificates.certs.changed')
+@when('cert-provider.certs.changed')
 def update_certs():
     cert_provider = endpoint_from_flag('cert-provider.available')
     server_cert = cert_provider.server_certs[0]  # only requested one
@@ -70,7 +70,7 @@ def update_certs():
 
     client_cert = cert_provider.client_certs[0]  # only requested one
     myclient.update_client_cert(client_cert.cert, client_cert.key)
-    clear_flag('certificates.certs.changed')
+    clear_flag('cert-provider.certs.changed')
 ```
 
 
