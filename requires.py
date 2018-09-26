@@ -18,7 +18,7 @@ class TlsRequires(Endpoint):
         Whenever the relation is joined.
 
       * `{endpoint_name}.ca.available`
-        When the root CA information is available via the [root_ca][] and
+        When the root CA information is available via the [root_ca_cert][] and
         [root_ca_chain][] properties.
 
       * `{endpoint_name}.ca.changed`
@@ -60,7 +60,7 @@ class TlsRequires(Endpoint):
 
     [Certificate]: common.md#tls_certificates_common.Certificate
     [CertificateRequest]: common.md#tls_certificates_common.CertificateRequest
-    [root_ca]: requires.md#requires.TlsRequires.root_ca
+    [root_ca_cert]: requires.md#requires.TlsRequires.root_ca_cert
     [root_ca_chain]: requires.md#requires.TlsRequires.root_ca_chain
     [request_server_cert]: requires.md#requires.TlsRequires.request_server_cert
     [request_client_cert]: requires.md#requires.TlsRequires.request_client_cert
@@ -128,9 +128,9 @@ class TlsRequires(Endpoint):
         """
         Return the root CA certificate.
 
-        Same as [root_ca][].
+        Same as [root_ca_cert][].
         """
-        return self.root_ca
+        return self.root_ca_cert
 
     @property
     def root_ca_chain(self):
