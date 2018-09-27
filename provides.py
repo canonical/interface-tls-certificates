@@ -1,127 +1,247 @@
-import json
+from charms.reactive import Endpoint
+from charms.reactive import when, when_not
+from charms.reactive import set_flag, clear_flag, toggle_flag
 
-from charms.reactive import hook
-from charms.reactive import scopes
-from charms.reactive import RelationBase
+from .tls_certificates_common import CertificateRequest
 
 
-class TlsProvides(RelationBase):
-    '''The class that provides a TLS interface other units.'''
-    scope = scopes.UNIT
+class TlsProvides(Endpoint):
+    """
+    The provider's side of the interface protocol.
 
-    @hook('{provides:tls-certificates}-relation-joined')
+    The following flags may be set:
+
+      * `{endpoint_name}.available`
+        Whenever any clients are joined.
+
+      * `{endpoint_name}.certs.requested`
+        When there are new certificate requests of any kind to be processed.
+        The requests can be accessed via [new_requests][].
+
+      * `{endpoint_name}.server.certs.requested`
+        When there are new server certificate requests to be processed.
+        The requests can be accessed via [new_server_requests][].
+
+      * `{endpoint_name}.client.certs.requested`
+        When there are new client certificate requests to be processed.
+        The requests can be accessed via [new_client_requests][].
+
+    [Certificate]: common.md#tls_certificates_common.Certificate
+    [CertificateRequest]: common.md#tls_certificates_common.CertificateRequest
+    [all_requests]: provides.md#provides.TlsProvides.all_requests
+    [new_requests]: provides.md#provides.TlsProvides.new_requests
+    [new_server_requests]: provides.md#provides.TlsProvides.new_server_requests
+    [new_client_requests]: provides.md#provides.TlsProvides.new_client_requests
+    """
+
+    @when('endpoint.{endpoint_name}.joined')
     def joined(self):
-        '''When a unit joins, set the available state.'''
-        # Get the conversation scoped to the unit name.
-        conversation = self.conversation()
-        conversation.set_state('{relation_name}.available')
+        set_flag(self.expand_name('{endpoint_name}.available'))
+        toggle_flag(self.expand_name('{endpoint_name}.certs.requested'),
+                    self.new_requests)
+        toggle_flag(self.expand_name('{endpoint_name}.server.cert.requested'),
+                    self.new_server_requests)
+        toggle_flag(self.expand_name('{endpoint_name}.client.cert.requested'),
+                    self.new_client_requests)
 
-    @hook('{provides:tls-certificates}-relation-changed')
-    def changed(self):
-        '''When a unit relation changes, check for a server certificate request
-        and set the server.cert.requested state.'''
-        conversation = self.conversation()
-        cn = conversation.get_remote('common_name')
-        sans = conversation.get_remote('sans')
-        name = conversation.get_remote('certificate_name')
-        requests = conversation.get_remote('cert_requests')
-        # When the relation has all three values set the server.cert.requested.
-        if (cn and sans and name) or requests:
-            conversation.set_state('{relation_name}.server.cert.requested')
-
-    @hook('{provides:tls-certificates}-relation-{broken,departed}')
-    def broken_or_departed(self):
-        '''Remove the available state from the unit as we are leaving.'''
-        conversation = self.conversation()
-        conversation.remove_state('{relation_name}.available')
+    @when_not('endpoint.{endpoint_name}.joined')
+    def broken(self):
+        clear_flag(self.expand_name('{endpoint_name}.available'))
+        clear_flag(self.expand_name('{endpoint_name}.certs.requested'))
+        clear_flag(self.expand_name('{endpoint_name}.server.certs.requested'))
+        clear_flag(self.expand_name('{endpoint_name}.client.certs.requested'))
 
     def set_ca(self, certificate_authority):
-        '''Set the CA on all the conversations in the relation data.'''
-        # Iterate over all conversations of this type.
-        for conversation in self.conversations():
+        """
+        Publish the CA to all related applications.
+        """
+        for relation in self.relations:
             # All the clients get the same CA, so send it to them.
-            conversation.set_remote(data={'ca': certificate_authority})
+            relation.to_publish_raw['ca'] = certificate_authority
 
     def set_chain(self, chain):
-        '''Set the chain on all the conversations in the relation data.'''
-        # Iterate over all conversations of this type.
-        for conversation in self.conversations():
+        """
+        Publish the chain of trust to all related applications.
+        """
+        for relation in self.relations:
             # All the clients get the same chain, so send it to them.
-            conversation.set_remote(data={'chain': chain})
+            relation.to_publish_raw['chain'] = chain
 
     def set_client_cert(self, cert, key):
-        '''Set the client cert and key on the relation data.'''
-        # Iterate over all conversations of this type.
-        for conversation in self.conversations():
-            client = {}
-            client['client.cert'] = cert
-            client['client.key'] = key
-            # Send the client cert and key to the unit using the conversation.
-            conversation.set_remote(data=client)
+        """
+        Deprecated.  This is only for backwards compatibility.
+
+        Publish a globally shared client cert and key.
+        """
+        for relation in self.relations:
+            relation.to_publish_raw.update({
+                'client.cert': cert,
+                'client.key': key,
+            })
 
     def set_server_cert(self, scope, cert, key):
-        '''Set the server cert and key on the relation data.'''
-        # Get the coversation scoped to the unit.
-        conversation = self.conversation(scope)
-        server = {}
-        # The scope is the unit name, replace the slash with underscore.
-        name = scope.replace('/', '_')
-        # Prefix the key with name so each unit can get a unique cert and key.
-        server['{0}.server.cert'.format(name)] = cert
-        server['{0}.server.key'.format(name)] = key
-        # Send the server cert and key to the unit using the conversation.
-        conversation.set_remote(data=server)
-        # Remove the server.cert.requested state as it is no longer needed.
-        conversation.remove_state('{relation_name}.server.cert.requested')
+        """
+        Deprecated.  Use one of the [new_requests][] collections and
+        `request.set_cert()` instead.
+
+        Set the server cert and key for the request identified by `scope`.
+        """
+        request = self.get_server_requests()[scope]
+        request.set_cert(cert, key)
 
     def set_server_multicerts(self, scope):
-        # The scope is the unit name, replace the slash with underscore.
-        name = scope.replace('/', '_')
-        conversation = self.conversation(scope)
-        multi_certs = conversation.get_local('multi_certs')
-        conversation.set_remote(
-            '{}.processed_requests'.format(name),
-            json.dumps(multi_certs, sort_keys=True))
-        conversation.remove_state('{relation_name}.server.cert.requested')
+        """
+        Deprecated.  Done automatically.
+        """
+        pass
 
     def add_server_cert(self, scope, cn, cert, key):
         '''
-            'client_0': {
-                'admin': {
-                    'cert': cert
-                    'key': key}}
+        Deprecated.  Use `request.set_cert()` instead.
         '''
-        conversation = self.conversation(scope)
-        multi_certs = conversation.get_local('multi_certs')
-        if multi_certs:
-            multi_certs[cn] = {
-                'cert': cert,
-                'key': key}
-
-        else:
-            multi_certs = {
-                cn: {
-                    'cert': cert,
-                    'key': key}}
-
-        conversation.set_local('multi_certs', multi_certs)
+        self.set_server_cert(scope, cert, key)
 
     def get_server_requests(self):
-        '''One provider can have many requests to generate server certificates.
-        Return a map of all server request objects indexed by the scope
-        which is essentially unit name.'''
-        request_map = {}
-        for conversation in self.conversations():
-            scope = conversation.scope
-            request = {}
-            request['common_name'] = conversation.get_remote('common_name')
-            sans = conversation.get_remote('sans')
-            if sans:
-                request['sans'] = json.loads(sans)
-            request['certificate_name'] = conversation.get_remote('certificate_name')  # noqa
-            cert_requests = conversation.get_remote('cert_requests')
-            if cert_requests:
-                request['cert_requests'] = json.loads(cert_requests)
-            # Create a map indexed by scope.
-            request_map[scope] = request
-        return request_map
+        """
+        Deprecated.  Use the [new_requests][] or [server_requests][]
+        collections instead.
+
+        One provider can have many requests to generate server certificates.
+        Return a map of all server request objects indexed by a unique
+        identifier.
+        """
+        return {req._key: req for req in self.new_server_requests}
+
+    @property
+    def all_requests(self):
+        """
+        List of all requests that have been made.
+
+        Each will be an instance of [CertificateRequest][].
+
+        Example usage:
+
+        ```python
+        @when('certs.regen',
+              'tls.certs.available')
+        def regen_all_certs():
+            tls = endpoint_from_flag('tls.certs.available')
+            for request in tls.all_requests:
+                cert, key = generate_cert(request.cert_type,
+                                          request.common_name,
+                                          request.sans)
+                request.set_cert(cert, key)
+        ```
+        """
+        requests = []
+        for unit in self.all_joined_units:
+            # handle older single server cert request
+            if unit.received_raw['common_name']:
+                requests.append(CertificateRequest(
+                    unit,
+                    'server',
+                    unit.received_raw['certificate_name'],
+                    unit.received_raw['common_name'],
+                    unit.received['sans'],
+                ))
+
+            # handle mutli server cert requests
+            reqs = unit.received['cert_requests'] or {}
+            for common_name, req in reqs.items():
+                requests.append(CertificateRequest(
+                    unit,
+                    'server',
+                    common_name,
+                    common_name,
+                    req['sans'],
+                ))
+
+            # handle client cert requests
+            reqs = unit.received['client_cert_requests'] or {}
+            for common_name, req in reqs.items():
+                requests.append(CertificateRequest(
+                    unit,
+                    'client',
+                    common_name,
+                    common_name,
+                    req['sans'],
+                ))
+        return requests
+
+    @property
+    def new_requests(self):
+        """
+        Filtered view of [all_requests][] that only includes requests that
+        haven't been handled.
+
+        Each will be an instance of [CertificateRequest][].
+
+        This collection can also be further filtered by request type using
+        [new_server_requests][] or [new_client_requests][].
+
+        Example usage:
+
+        ```python
+        @when('tls.certs.requested')
+        def gen_certs():
+            tls = endpoint_from_flag('tls.certs.requested')
+            for request in tls.new_requests:
+                cert, key = generate_cert(request.cert_type,
+                                          request.common_name,
+                                          request.sans)
+                request.set_cert(cert, key)
+        ```
+        """
+        return [req for req in self.all_requests if not req.is_handled]
+
+    @property
+    def new_server_requests(self):
+        """
+        Filtered view of [new_requests][] that only includes server cert
+        requests.
+
+        Each will be an instance of [CertificateRequest][].
+
+        Example usage:
+
+        ```python
+        @when('tls.server.certs.requested')
+        def gen_server_certs():
+            tls = endpoint_from_flag('tls.server.certs.requested')
+            for request in tls.new_server_requests:
+                cert, key = generate_server_cert(request.common_name,
+                                                 request.sans)
+                request.set_cert(cert, key)
+        ```
+        """
+        return [req for req in self.new_requests if req.cert_type == 'server']
+
+    @property
+    def new_client_requests(self):
+        """
+        Filtered view of [new_requests][] that only includes client cert
+        requests.
+
+        Each will be an instance of [CertificateRequest][].
+
+        Example usage:
+
+        ```python
+        @when('tls.client.certs.requested')
+        def gen_client_certs():
+            tls = endpoint_from_flag('tls.client.certs.requested')
+            for request in tls.new_client_requests:
+                cert, key = generate_client_cert(request.common_name,
+                                                 request.sans)
+                request.set_cert(cert, key)
+        ```
+        """
+        return [req for req in self.new_requests if req.cert_type == 'client']
+
+    @property
+    def all_published_certs(self):
+        """
+        List of all [Certificate][] instances that this provider has published
+        for all related applications.
+        """
+        return [req.cert for req in self.all_requests if req.cert]
