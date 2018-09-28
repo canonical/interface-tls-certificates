@@ -181,14 +181,15 @@ class TlsRequires(Endpoint):
         json_data = self.all_joined_units.received
 
         # for backwards compatibility, the first cert goes in its own fields
-        common_name = self.relations[0].to_publish_raw['common_name']
-        cert = raw_data['{}.server.cert'.format(name)]
-        key = raw_data['{}.server.key'.format(name)]
-        if cert and key:
-            certs.append(Certificate('server',
-                                     common_name,
-                                     cert,
-                                     key))
+        if self.relations:
+            common_name = self.relations[0].to_publish_raw['common_name']
+            cert = raw_data['{}.server.cert'.format(name)]
+            key = raw_data['{}.server.key'.format(name)]
+            if cert and key:
+                certs.append(Certificate('server',
+                                         common_name,
+                                         cert,
+                                         key))
 
         # subsequent requests go in the collection
         certs_data = json_data['{}.processed_requests'.format(name)] or {}
@@ -246,6 +247,8 @@ class TlsRequires(Endpoint):
         certificate, although the common names must be unique.  If called
         again with the same common name, it will be ignored.
         """
+        if not self.relations:
+            return
         # assume we'll only be connected to one provider
         to_publish_json = self.relations[0].to_publish
         to_publish_raw = self.relations[0].to_publish_raw
@@ -281,6 +284,8 @@ class TlsRequires(Endpoint):
         certificate, although the common names must be unique.  If called
         again with the same common name, it will be ignored.
         """
+        if not self.relations:
+            return
         # assume we'll only be connected to one provider
         to_publish_json = self.relations[0].to_publish
         requests = to_publish_json.get('client_cert_requests', {})
