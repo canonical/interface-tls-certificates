@@ -86,7 +86,9 @@ class CertificateRequest(dict):
 
     @property
     def is_handled(self):
-        return self.cert is not None or is_data_changed(self._key, self.sans)
+        has_cert = self.cert is not None
+        same_sans = not is_data_changed(self._key, self.sans)
+        return has_cert and same_sans
 
     def set_cert(self, cert, key):
         rel = self._unit.relation
