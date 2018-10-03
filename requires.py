@@ -252,7 +252,7 @@ class TlsRequires(Endpoint):
         # assume we'll only be connected to one provider
         to_publish_json = self.relations[0].to_publish
         to_publish_raw = self.relations[0].to_publish_raw
-        if not to_publish_raw['common_name']:
+        if to_publish_raw['common_name'] in (None, '', cn):
             # for backwards compatibility, first request goes in its own fields
             to_publish_raw['common_name'] = cn
             to_publish_json['sans'] = sans or []
