@@ -1,3 +1,5 @@
+import uuid
+
 from charmhelpers.core import hookenv
 
 from charms.reactive import when, when_not
@@ -256,7 +258,7 @@ class TlsRequires(Endpoint):
             # for backwards compatibility, first request goes in its own fields
             to_publish_raw['common_name'] = cn
             to_publish_json['sans'] = sans or []
-            to_publish_raw['certificate_name'] = cert_name
+            to_publish_raw['certificate_name'] = cert_name or str(uuid.uuid4())
         else:
             # subsequent requests go in the collection
             requests = to_publish_json.get('cert_requests', {})
