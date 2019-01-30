@@ -39,6 +39,11 @@ class TlsProvides(Endpoint):
         set_flag(self.expand_name('{endpoint_name}.available'))
         toggle_flag(self.expand_name('{endpoint_name}.certs.requested'),
                     self.new_requests)
+        toggle_flag(self.expand_name('{endpoint_name}.server.certs.requested'),
+                    self.new_server_requests)
+        toggle_flag(self.expand_name('{endpoint_name}.client.certs.requested'),
+                    self.new_client_requests)
+        # For backwards compatibility, set the old "cert" flags as well
         toggle_flag(self.expand_name('{endpoint_name}.server.cert.requested'),
                     self.new_server_requests)
         toggle_flag(self.expand_name('{endpoint_name}.client.cert.requested'),
