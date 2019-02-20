@@ -2,7 +2,7 @@ from charms.reactive import Endpoint
 from charms.reactive import when, when_not
 from charms.reactive import set_flag, clear_flag, toggle_flag
 
-from .tls_certificates_common import CertificateRequest
+from . import impl
 
 
 class TlsProvides(Endpoint):
@@ -33,9 +33,17 @@ class TlsProvides(Endpoint):
     [new_server_requests]: provides.md#provides.TlsProvides.new_server_requests
     [new_client_requests]: provides.md#provides.TlsProvides.new_client_requests
     """
+    PROTOCOLS = [
+        impl.v1.Provides,
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        impl.versions.negotiate(self)  # TODO: do automatically in framework
 
     @when('endpoint.{endpoint_name}.joined')
     def joined(self):
+
         set_flag(self.expand_name('{endpoint_name}.available'))
         toggle_flag(self.expand_name('{endpoint_name}.certs.requested'),
                     self.new_requests)
@@ -61,16 +69,14 @@ class TlsProvides(Endpoint):
         Publish the CA to all related applications.
         """
         for relation in self.relations:
-            # All the clients get the same CA, so send it to them.
-            relation.to_publish_raw['ca'] = certificate_authority
+            relation.protocol.set_root_ca_cert(certificate_authority)
 
     def set_chain(self, chain):
         """
         Publish the chain of trust to all related applications.
         """
         for relation in self.relations:
-            # All the clients get the same chain, so send it to them.
-            relation.to_publish_raw['chain'] = chain
+            relation.protocol.set_root_ca_chain(chain)
 
     def set_client_cert(self, cert, key):
         """
@@ -79,10 +85,7 @@ class TlsProvides(Endpoint):
         Publish a globally shared client cert and key.
         """
         for relation in self.relations:
-            relation.to_publish_raw.update({
-                'client.cert': cert,
-                'client.key': key,
-            })
+            relation.protocol.set_global_client_cert(cert, key)
 
     def set_server_cert(self, scope, cert, key):
         """
@@ -91,8 +94,10 @@ class TlsProvides(Endpoint):
 
         Set the server cert and key for the request identified by `scope`.
         """
-        request = self.get_server_requests()[scope]
-        request.set_cert(cert, key)
+        for relation in self.relations:
+            if scope in relation.protocol.requests:
+                relation.protocol.requests[scope].set_cert(cert, key)
+                break
 
     def set_server_multicerts(self, scope):
         """
@@ -115,7 +120,7 @@ class TlsProvides(Endpoint):
         Return a map of all server request objects indexed by a unique
         identifier.
         """
-        return {req._key: req for req in self.new_server_requests}
+        return {req.request_id: req for req in self.new_server_requests}
 
     @property
     def all_requests(self):
@@ -139,38 +144,8 @@ class TlsProvides(Endpoint):
         ```
         """
         requests = []
-        for unit in self.all_joined_units:
-            # handle older single server cert request
-            if unit.received_raw['common_name']:
-                requests.append(CertificateRequest(
-                    unit,
-                    'server',
-                    unit.received_raw['certificate_name'],
-                    unit.received_raw['common_name'],
-                    unit.received['sans'],
-                ))
-
-            # handle mutli server cert requests
-            reqs = unit.received['cert_requests'] or {}
-            for common_name, req in reqs.items():
-                requests.append(CertificateRequest(
-                    unit,
-                    'server',
-                    common_name,
-                    common_name,
-                    req['sans'],
-                ))
-
-            # handle client cert requests
-            reqs = unit.received['client_cert_requests'] or {}
-            for common_name, req in reqs.items():
-                requests.append(CertificateRequest(
-                    unit,
-                    'client',
-                    common_name,
-                    common_name,
-                    req['sans'],
-                ))
+        for relation in self.relations:
+            requests.extend(relation.protocol.requests)
         return requests
 
     @property
@@ -249,4 +224,7 @@ class TlsProvides(Endpoint):
         List of all [Certificate][] instances that this provider has published
         for all related applications.
         """
-        return [req.cert for req in self.all_requests if req.cert]
+        certs = []
+        for relation in self.relations:
+            certs.extend(relation.protocol.responses.values())
+        return certs

@@ -1,13 +1,9 @@
-import uuid
-
-from charmhelpers.core import hookenv
-
 from charms.reactive import when, when_not
 from charms.reactive import set_flag, clear_flag, toggle_flag
 from charms.reactive import Endpoint
 from charms.reactive import data_changed
 
-from .tls_certificates_common import Certificate
+from . import impl
 
 
 class TlsRequires(Endpoint):
@@ -70,6 +66,18 @@ class TlsRequires(Endpoint):
     [server_certs_map]: requires.md#requires.TlsRequires.server_certs_map
     [client_certs]: requires.md#requires.TlsRequires.server_certs
     """
+    PROTOCOLS = [
+        impl.v1.Requires,
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        impl.versions.negotiate(self)  # TODO: do automatically in framework
+
+    @property
+    def _relation(self):
+        # we assume we only ever have one cert provider related
+        return self.relations[0]
 
     @when('endpoint.{endpoint_name}.joined')
     def joined(self):
@@ -122,9 +130,9 @@ class TlsRequires(Endpoint):
         """
         Root CA certificate.
         """
-        # only the leader of the provider should set the CA, or all units
-        # had better agree
-        return self.all_joined_units.received_raw['ca']
+        if not self.is_joined:
+            return None
+        return self._relation.protocol.root_ca_cert
 
     def get_ca(self):
         """
@@ -139,9 +147,9 @@ class TlsRequires(Endpoint):
         """
         The chain of trust for the root CA.
         """
-        # only the leader of the provider should set the CA, or all units
-        # had better agree
-        return self.all_joined_units.received_raw['chain']
+        if not self.is_joined:
+            return None
+        return self._relation.protocol.root_ca_chain
 
     def get_chain(self):
         """
@@ -158,8 +166,10 @@ class TlsRequires(Endpoint):
 
         Return a globally shared client certificate and key.
         """
-        data = self.all_joined_units.received_raw
-        return (data['client.cert'], data['client.key'])
+        if not self.joined:
+            return None
+        cert = self._relation.protocol.global_client_cert
+        return (cert.cert, cert.key)
 
     def get_server_cert(self):
         """
@@ -177,37 +187,18 @@ class TlsRequires(Endpoint):
         """
         List of [Certificate][] instances for all available server certs.
         """
-        certs = []
-        name = hookenv.local_unit().replace('/', '_')
-        raw_data = self.all_joined_units.received_raw
-        json_data = self.all_joined_units.received
-
-        # for backwards compatibility, the first cert goes in its own fields
-        if self.relations:
-            common_name = self.relations[0].to_publish_raw['common_name']
-            cert = raw_data['{}.server.cert'.format(name)]
-            key = raw_data['{}.server.key'.format(name)]
-            if cert and key:
-                certs.append(Certificate('server',
-                                         common_name,
-                                         cert,
-                                         key))
-
-        # subsequent requests go in the collection
-        certs_data = json_data['{}.processed_requests'.format(name)] or {}
-        certs.extend(Certificate('server',
-                                 common_name,
-                                 cert['cert'],
-                                 cert['key'])
-                     for common_name, cert in certs_data.items())
-        return certs
+        if not self.is_joined:
+            return []
+        return list(self._relation.protocol.server_certs.values())
 
     @property
     def server_certs_map(self):
         """
         Mapping of server [Certificate][] instances by their `common_name`.
         """
-        return {cert.common_name: cert for cert in self.server_certs}
+        if not self.is_joined:
+            return {}
+        return self._relation.protocol.server_certs
 
     def get_batch_requests(self):
         """
@@ -222,21 +213,18 @@ class TlsRequires(Endpoint):
         """
         List of [Certificate][] instances for all available client certs.
         """
-        name = hookenv.local_unit().replace('/', '_')
-        field = '{}.processed_client_requests'.format(name)
-        certs_data = self.all_joined_units.received[field] or {}
-        return [Certificate('client',
-                            common_name,
-                            cert['cert'],
-                            cert['key'])
-                for common_name, cert in certs_data.items()]
+        if not self.is_joined:
+            return []
+        return list(self._relation.protocol.client_certs.values())
 
     @property
     def client_certs_map(self):
         """
         Mapping of client [Certificate][] instances by their `common_name`.
         """
-        return {cert.common_name: cert for cert in self.client_certs}
+        if not self.is_joined:
+            return {}
+        return self._relation.protocol.client_certs
 
     def request_server_cert(self, cn, sans=None, cert_name=None):
         """
@@ -249,21 +237,9 @@ class TlsRequires(Endpoint):
         certificate, although the common names must be unique.  If called
         again with the same common name, it will be ignored.
         """
-        if not self.relations:
+        if not self.is_joined:
             return
-        # assume we'll only be connected to one provider
-        to_publish_json = self.relations[0].to_publish
-        to_publish_raw = self.relations[0].to_publish_raw
-        if to_publish_raw['common_name'] in (None, '', cn):
-            # for backwards compatibility, first request goes in its own fields
-            to_publish_raw['common_name'] = cn
-            to_publish_json['sans'] = sans or []
-            to_publish_raw['certificate_name'] = cert_name or str(uuid.uuid4())
-        else:
-            # subsequent requests go in the collection
-            requests = to_publish_json.get('cert_requests', {})
-            requests[cn] = {'sans': sans or []}
-            to_publish_json['cert_requests'] = requests
+        self._relation.protocol.request_server_cert(cn, sans, cert_name)
 
     def add_request_server_cert(self, cn, sans):
         """
@@ -286,10 +262,6 @@ class TlsRequires(Endpoint):
         certificate, although the common names must be unique.  If called
         again with the same common name, it will be ignored.
         """
-        if not self.relations:
+        if not self.joined:
             return
-        # assume we'll only be connected to one provider
-        to_publish_json = self.relations[0].to_publish
-        requests = to_publish_json.get('client_cert_requests', {})
-        requests[cn] = {'sans': sans}
-        to_publish_json['client_cert_requests'] = requests
+        self._relation.protocol.request_client_cert(cn, sans)
