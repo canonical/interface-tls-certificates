@@ -1,3 +1,8 @@
+if not __package__:
+    # fix relative imports when building docs
+    import sys
+    __package__ = sys.modules[''].__name__
+
 import uuid
 
 from charmhelpers.core import hookenv
@@ -73,6 +78,7 @@ class TlsRequires(Endpoint):
 
     @when('endpoint.{endpoint_name}.joined')
     def joined(self):
+        self.relations[0].to_publish_raw['unit_name'] = self._unit_name
         prefix = self.expand_name('{endpoint_name}.')
         ca_available = self.root_ca_cert
         ca_changed = ca_available and data_changed(prefix + 'ca',
@@ -116,6 +122,10 @@ class TlsRequires(Endpoint):
         clear_flag(prefix + 'server.cert.available')
         clear_flag(prefix + 'client.cert.available')
         clear_flag(prefix + 'batch.cert.available')
+
+    @property
+    def _unit_name(self):
+        return hookenv.local_unit().replace('/', '_')
 
     @property
     def root_ca_cert(self):
@@ -178,15 +188,14 @@ class TlsRequires(Endpoint):
         List of [Certificate][] instances for all available server certs.
         """
         certs = []
-        name = hookenv.local_unit().replace('/', '_')
         raw_data = self.all_joined_units.received_raw
         json_data = self.all_joined_units.received
 
         # for backwards compatibility, the first cert goes in its own fields
         if self.relations:
             common_name = self.relations[0].to_publish_raw['common_name']
-            cert = raw_data['{}.server.cert'.format(name)]
-            key = raw_data['{}.server.key'.format(name)]
+            cert = raw_data['{}.server.cert'.format(self._unit_name)]
+            key = raw_data['{}.server.key'.format(self._unit_name)]
             if cert and key:
                 certs.append(Certificate('server',
                                          common_name,
@@ -194,7 +203,8 @@ class TlsRequires(Endpoint):
                                          key))
 
         # subsequent requests go in the collection
-        certs_data = json_data['{}.processed_requests'.format(name)] or {}
+        field = '{}.processed_requests'.format(self._unit_name)
+        certs_data = json_data[field] or {}
         certs.extend(Certificate('server',
                                  common_name,
                                  cert['cert'],
@@ -222,8 +232,7 @@ class TlsRequires(Endpoint):
         """
         List of [Certificate][] instances for all available client certs.
         """
-        name = hookenv.local_unit().replace('/', '_')
-        field = '{}.processed_client_requests'.format(name)
+        field = '{}.processed_client_requests'.format(self._unit_name)
         certs_data = self.all_joined_units.received[field] or {}
         return [Certificate('client',
                             common_name,
