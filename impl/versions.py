@@ -28,8 +28,8 @@ def negotiate(endpoint):
             # upgrade protocol version
             old_protocol = protocols[current_version](relation)
             new_protocol = protocols[new_version](relation)
-            new_protocol.upgrade_from(old_protocol)
             old_protocol.clear()
+            new_protocol.upgrade_from(old_protocol)
             relation.to_publish['current-version'] = new_version
             protocol = new_protocol
         else:

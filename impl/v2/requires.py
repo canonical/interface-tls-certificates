@@ -2,45 +2,29 @@ import uuid
 
 from ..common import CertificateRequest, Certificate
 from ..versions import VersionedProtocol
-from charmhelpers.core import hookenv
+from charmhelpers.core import unitdata
 
-LOCAL_UNIT_NAME = hookenv.local_unit().replace('/', '_')
+LOCAL_UNIT_ID = unitdata.kv().get('tls-certificates.unit.id')
+if not LOCAL_UNIT_ID:
+    LOCAL_UNIT_ID = str(uuid.uuid4())
+    unitdata.kv().set('tls-certificates.unit.id', LOCAL_UNIT_ID)
 
 
 class Requires(VersionedProtocol):
-    VERSION = 1
-
-    class fields:
-        root_ca_cert = 'ca'
-        root_ca_chain = 'chain'
-        legacy_server_cert = LOCAL_UNIT_NAME + '.server.cert'
-        legacy_server_key = LOCAL_UNIT_NAME + '.server.key'
-        legacy_client_cert = 'client.cert'
-        legacy_client_key = 'client.key'
-        server_certs = LOCAL_UNIT_NAME + '.processed_requests'
-        client_certs = LOCAL_UNIT_NAME + '.processed_client_requests'
-        legacy_server_common_name = 'common_name'
-        legacy_server_sans = 'sans'
-        legacy_server_cert_name = 'certificate_name'
-        server_requests = 'cert_requests'
-        client_requests = 'client_cert_requests'
+    VERSION = 2
 
     def upgrade_from(self, old_version):
-        raise NotImplementedError()
+        for request in old_version.requests:
+            self._request_cert(request)
 
     def clear(self):
-        self.relation._pub_raw.update({
-            self.fields.legacy_server_common_name: None,
-            self.fields.legacy_server_sans: None,
-            self.fields.legacy_server_cert_name: None,
-        })
-        self.relation._pub_json.update({
-            self.fields.server_requests: None,
-            self.fields.client_requests: None,
-        })
+        for key in self._pub_json.keys():
+            if key.startswith(self._version_prefix):
+                self._pub_json[key] = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._version_prefix = 'v{}.'.format(self.VERSION)
         self._requests = self._read_requests()
         self._ca_info = self._read_ca_info()
         self._certs = self._read_certs()
@@ -66,28 +50,10 @@ class Requires(VersionedProtocol):
 
     def _read_requests(self):
         requests = []
-
-        # legacy server req
-        common_name = self._pub_raw[self.fields.legacy_server_common_name]
-        if common_name:
-            requests.append(CertificateRequest(
-                unit=None,
-                cert_type='server',
-                common_name=common_name,
-                sans=self._pub_json[self.fields.legacy_server_sans],
-                cert_name=self._pub_raw[self.fields.legacy_server_cert_name],
-            ))
-
-        for cert_type, field in (('server', self.fields.server_requests),
-                                 ('client', self.fields.client_requests)):
-            requests.extend(CertificateRequest(
-                unit=None,
-                cert_type=cert_type,
-                common_name=common_name,
-                sans=req['sans'],
-            ) for common_name, req in
-                self._pub_json.get(field, {}).items())
-
+        for key, value in self._pub_json.items():
+            if not key.startswith(self._version_prefix):
+                continue
+            requests.append(CertificateRequest(unit=None, **value))
         return requests
 
     def _read_ca_info(self):
@@ -132,10 +98,6 @@ class Requires(VersionedProtocol):
         )
 
     @property
-    def requests(self):
-        return self._requests
-
-    @property
     def root_ca_cert(self):
         """
         Certificate for the root CA.
@@ -171,22 +133,15 @@ class Requires(VersionedProtocol):
         return self._certs['client']
 
     def request_cert(self, cert_type, common_name, sans, cert_name=None):
-        # for backwards compatibility, populate cert name
-        if not cert_name:
-            cert_name = str(uuid.uuid4())
-        published_cn = self._pub_raw[self.fields.legacy_server_common_name]
-        if cert_type == 'server' and published_cn in (None, '', common_name):
-            # for backwards compatibility, first server cert request goes into
-            # special fields fields
-            self._pub_raw[self.fields.legacy_server_common_name] = common_name
-            self._pub_json[self.fields.legacy_server_sans] = sans or []
-            self._pub_raw[self.fields.legacy_server_cert_name] = cert_name
-        else:
-            # other requests go in the collections
-            if cert_type == 'server':
-                field = self.fields.server_requests
-            else:
-                field = self.fields.client_requests
-            requests = self._pub_json.get(field, {})
-            requests[common_name] = {'sans': sans or []}
-            self._pub_json[field] = requests
+        self._request_cert(CertificateRequest(unit=None,
+                                              cert_type=cert_type,
+                                              common_name=common_name,
+                                              sans=sans,
+                                              cert_name=cert_name))
+
+    def _request_cert(self, cert_req):
+        self._pub_json[self._version_prefix + 'requestor'] = LOCAL_UNIT_ID
+        key = '{version}{cert_type}.{common_name}'.format(
+            version=self._version_prefix,
+            **cert_req)
+        self._pub_json[key] = cert_req

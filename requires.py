@@ -239,7 +239,7 @@ class TlsRequires(Endpoint):
         """
         if not self.is_joined:
             return
-        self._relation.protocol.request_server_cert(cn, sans, cert_name)
+        self._relation.protocol.request_cert('server', cn, sans, cert_name)
 
     def add_request_server_cert(self, cn, sans):
         """
@@ -264,4 +264,4 @@ class TlsRequires(Endpoint):
         """
         if not self.joined:
             return
-        self._relation.protocol.request_client_cert(cn, sans)
+        self._relation.protocol.request_cert('client', cn, sans)
