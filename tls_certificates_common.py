@@ -114,7 +114,7 @@ class CertificateRequest(dict):
         if not rel.endpoint.new_requests:
             clear_flag(rel.endpoint.expand_name('{endpoint_name}.'
                                                 'certs.requested'))
-        data_changed(self._key, self.sans)
+        data_changed(self._key, sorted(set(self.sans or [])))
 
 
 class Certificate(dict):
