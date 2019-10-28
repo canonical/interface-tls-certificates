@@ -267,7 +267,10 @@ class TlsRequires(Endpoint):
             # for backwards compatibility, first request goes in its own fields
             to_publish_raw['common_name'] = cn
             to_publish_json['sans'] = sans or []
-            to_publish_raw['certificate_name'] = cert_name or str(uuid.uuid4())
+            cert_name = to_publish_raw.get('certificate_name') or cert_name
+            if cert_name is None:
+                cert_name = str(uuid.uuid4())
+            to_publish_raw['certificate_name'] = cert_name
         else:
             # subsequent requests go in the collection
             requests = to_publish_json.get('cert_requests', {})
