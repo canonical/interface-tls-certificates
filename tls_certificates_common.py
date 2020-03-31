@@ -154,8 +154,29 @@ class ApplicationCertificateRequest(CertificateRequest):
 
     @property
     def _key(self):
-        return '.'.join((self._unit.relation.relation_id,
-                         self.common_name))
+        return '{}.{}'.format(self._unit.relation.relation_id, 'app_cert')
+
+    @property
+    def cert(self):
+        """
+        The cert published for this request, if any.
+        """
+        cert, key = None, None
+        tp = self._unit.relation.to_publish
+        certs_data = tp.get(self._publish_key, {})
+        cert_data = certs_data.get('app_data', {})
+        cert = cert_data.get('cert')
+        key = cert_data.get('key')
+        if cert and key:
+            return Certificate(self.cert_type, self.common_name, cert, key)
+        return None
+
+    @property
+    def is_handled(self):
+        has_cert = self.cert is not None
+        same_sans = not is_data_changed(self._key,
+                                        sorted(set(self.sans or [])))
+        return has_cert and same_sans
 
     @property
     def sans(self):
@@ -173,7 +194,7 @@ class ApplicationCertificateRequest(CertificateRequest):
             for cn, req in reqs.items():
                 _sans.append(cn)
                 _sans.extend(req['sans'])
-        return list(set(_sans))
+        return sorted(list(set(_sans)))
 
     @property
     def _request_key(self):
@@ -194,7 +215,7 @@ class ApplicationCertificateRequest(CertificateRequest):
 
     @property
     def _publish_key(self):
-        return self.resolve_unit_name(unit=self._unit).replace('/', '_')
+        return self.derive_publish_key(unit=self._unit)
 
     def set_cert(self, cert, key):
         """Send the cert and key to all units of the application
