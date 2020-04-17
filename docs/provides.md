@@ -60,6 +60,26 @@ def regen_all_certs():
         request.set_cert(cert, key)
 ```
 
+<h2 id="provides.TlsProvides.new_application_requests">new_application_requests</h2>
+
+
+Filtered view of [new_requests][] that only includes application cert
+requests.
+
+Each will be an instance of [ApplicationCertificateRequest][].
+
+Example usage:
+
+```python
+@when('tls.application.certs.requested')
+def gen_application_certs():
+    tls = endpoint_from_flag('tls.application.certs.requested')
+    for request in tls.new_application_requests:
+        cert, key = generate_application_cert(request.common_name,
+                                              request.sans)
+        request.set_cert(cert, key)
+```
+
 <h2 id="provides.TlsProvides.new_client_requests">new_client_requests</h2>
 
 
@@ -127,7 +147,7 @@ def gen_server_certs():
 <h2 id="provides.TlsProvides.set_ca">set_ca</h2>
 
 ```python
-TlsProvides.set_ca(self, certificate_authority)
+TlsProvides.set_ca(certificate_authority)
 ```
 
 Publish the CA to all related applications.
@@ -135,7 +155,7 @@ Publish the CA to all related applications.
 <h2 id="provides.TlsProvides.set_chain">set_chain</h2>
 
 ```python
-TlsProvides.set_chain(self, chain)
+TlsProvides.set_chain(chain)
 ```
 
 Publish the chain of trust to all related applications.
@@ -143,7 +163,7 @@ Publish the chain of trust to all related applications.
 <h2 id="provides.TlsProvides.set_client_cert">set_client_cert</h2>
 
 ```python
-TlsProvides.set_client_cert(self, cert, key)
+TlsProvides.set_client_cert(cert, key)
 ```
 
 Deprecated.  This is only for backwards compatibility.
@@ -153,7 +173,7 @@ Publish a globally shared client cert and key.
 <h2 id="provides.TlsProvides.set_server_cert">set_server_cert</h2>
 
 ```python
-TlsProvides.set_server_cert(self, scope, cert, key)
+TlsProvides.set_server_cert(scope, cert, key)
 ```
 
 Deprecated.  Use one of the [new_requests][] collections and
@@ -164,7 +184,7 @@ Set the server cert and key for the request identified by `scope`.
 <h2 id="provides.TlsProvides.set_server_multicerts">set_server_multicerts</h2>
 
 ```python
-TlsProvides.set_server_multicerts(self, scope)
+TlsProvides.set_server_multicerts(scope)
 ```
 
 Deprecated.  Done automatically.
@@ -172,7 +192,7 @@ Deprecated.  Done automatically.
 <h2 id="provides.TlsProvides.add_server_cert">add_server_cert</h2>
 
 ```python
-TlsProvides.add_server_cert(self, scope, cn, cert, key)
+TlsProvides.add_server_cert(scope, cn, cert, key)
 ```
 
 Deprecated.  Use `request.set_cert()` instead.
@@ -180,7 +200,7 @@ Deprecated.  Use `request.set_cert()` instead.
 <h2 id="provides.TlsProvides.get_server_requests">get_server_requests</h2>
 
 ```python
-TlsProvides.get_server_requests(self)
+TlsProvides.get_server_requests()
 ```
 
 Deprecated.  Use the [new_requests][] or [server_requests][]

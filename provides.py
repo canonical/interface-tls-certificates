@@ -7,7 +7,10 @@ from charms.reactive import Endpoint
 from charms.reactive import when, when_not
 from charms.reactive import set_flag, clear_flag, toggle_flag
 
-from .tls_certificates_common import CertificateRequest
+from .tls_certificates_common import (
+    ApplicationCertificateRequest,
+    CertificateRequest
+)
 
 
 class TlsProvides(Endpoint):
@@ -48,6 +51,9 @@ class TlsProvides(Endpoint):
                     self.new_server_requests)
         toggle_flag(self.expand_name('{endpoint_name}.client.certs.requested'),
                     self.new_client_requests)
+        toggle_flag(
+            self.expand_name('{endpoint_name}.application.certs.requested'),
+            self.new_application_requests)
         # For backwards compatibility, set the old "cert" flags as well
         toggle_flag(self.expand_name('{endpoint_name}.server.cert.requested'),
                     self.new_server_requests)
@@ -60,6 +66,8 @@ class TlsProvides(Endpoint):
         clear_flag(self.expand_name('{endpoint_name}.certs.requested'))
         clear_flag(self.expand_name('{endpoint_name}.server.certs.requested'))
         clear_flag(self.expand_name('{endpoint_name}.client.certs.requested'))
+        clear_flag(
+            self.expand_name('{endpoint_name}.application.certs.requested'))
 
     def set_ca(self, certificate_authority):
         """
@@ -176,6 +184,16 @@ class TlsProvides(Endpoint):
                     common_name,
                     req['sans'],
                 ))
+            # handle application cert requests
+            reqs = unit.received['application_cert_requests'] or {}
+            for common_name, req in reqs.items():
+                requests.append(ApplicationCertificateRequest(
+                    unit,
+                    'application',
+                    common_name,
+                    common_name,
+                    req['sans']
+                ))
         return requests
 
     @property
@@ -247,6 +265,32 @@ class TlsProvides(Endpoint):
         ```
         """
         return [req for req in self.new_requests if req.cert_type == 'client']
+
+    @property
+    def new_application_requests(self):
+        """
+        Filtered view of [new_requests][] that only includes application cert
+        requests.
+
+        Each will be an instance of [ApplicationCertificateRequest][].
+
+        Example usage:
+
+        ```python
+        @when('tls.application.certs.requested')
+        def gen_application_certs():
+            tls = endpoint_from_flag('tls.application.certs.requested')
+            for request in tls.new_application_requests:
+                cert, key = generate_application_cert(request.common_name,
+                                                      request.sans)
+                request.set_cert(cert, key)
+        ```
+
+        :returns: List of certificate requests.
+        :rtype: [CertificateRequest, ]
+        """
+        return [req for req in self.new_requests
+                if req.cert_type == 'application']
 
     @property
     def all_published_certs(self):

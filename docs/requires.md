@@ -65,6 +65,11 @@ The following flags have been deprecated:
 [server_certs_map]: requires.md#requires.TlsRequires.server_certs_map
 [client_certs]: requires.md#requires.TlsRequires.server_certs
 
+<h2 id="requires.TlsRequires.application_certs">application_certs</h2>
+
+
+List of [Certificate][] instances for all available application certs.
+
 <h2 id="requires.TlsRequires.client_certs">client_certs</h2>
 
 
@@ -98,7 +103,7 @@ Mapping of server [Certificate][] instances by their `common_name`.
 <h2 id="requires.TlsRequires.get_ca">get_ca</h2>
 
 ```python
-TlsRequires.get_ca(self)
+TlsRequires.get_ca()
 ```
 
 Return the root CA certificate.
@@ -108,7 +113,7 @@ Same as [root_ca_cert][].
 <h2 id="requires.TlsRequires.get_chain">get_chain</h2>
 
 ```python
-TlsRequires.get_chain(self)
+TlsRequires.get_chain()
 ```
 
 Return the chain of trust for the root CA.
@@ -118,7 +123,7 @@ Same as [root_ca_chain][].
 <h2 id="requires.TlsRequires.get_client_cert">get_client_cert</h2>
 
 ```python
-TlsRequires.get_client_cert(self)
+TlsRequires.get_client_cert()
 ```
 
 Deprecated.  Use [request_client_cert][] and the [client_certs][]
@@ -129,7 +134,7 @@ Return a globally shared client certificate and key.
 <h2 id="requires.TlsRequires.get_server_cert">get_server_cert</h2>
 
 ```python
-TlsRequires.get_server_cert(self)
+TlsRequires.get_server_cert()
 ```
 
 Deprecated.  Use the [server_certs][] collection instead.
@@ -139,7 +144,7 @@ Return the cert and key of the first server certificate requested.
 <h2 id="requires.TlsRequires.get_batch_requests">get_batch_requests</h2>
 
 ```python
-TlsRequires.get_batch_requests(self)
+TlsRequires.get_batch_requests()
 ```
 
 Deprecated.  Use [server_certs_map][] instead.
@@ -149,7 +154,7 @@ Mapping of server [Certificate][] instances by their `common_name`.
 <h2 id="requires.TlsRequires.request_server_cert">request_server_cert</h2>
 
 ```python
-TlsRequires.request_server_cert(self, cn, sans=None, cert_name=None)
+TlsRequires.request_server_cert(cn, sans=None, cert_name=None)
 ```
 
 Request a server certificate and key be generated for the given
@@ -164,7 +169,7 @@ again with the same common name, it will be ignored.
 <h2 id="requires.TlsRequires.add_request_server_cert">add_request_server_cert</h2>
 
 ```python
-TlsRequires.add_request_server_cert(self, cn, sans)
+TlsRequires.add_request_server_cert(cn, sans)
 ```
 
 Deprecated.  Use [request_server_cert][] instead.
@@ -172,7 +177,7 @@ Deprecated.  Use [request_server_cert][] instead.
 <h2 id="requires.TlsRequires.request_server_certs">request_server_certs</h2>
 
 ```python
-TlsRequires.request_server_certs(self)
+TlsRequires.request_server_certs()
 ```
 
 Deprecated.  Just use [request_server_cert][]; this does nothing.
@@ -180,7 +185,7 @@ Deprecated.  Just use [request_server_cert][]; this does nothing.
 <h2 id="requires.TlsRequires.request_client_cert">request_client_cert</h2>
 
 ```python
-TlsRequires.request_client_cert(self, cn, sans)
+TlsRequires.request_client_cert(cn, sans)
 ```
 
 Request a client certificate and key be generated for the given
@@ -189,4 +194,14 @@ common name (`cn`) and list of alternative names (`sans`).
 This can be called multiple times to request more than one client
 certificate, although the common names must be unique.  If called
 again with the same common name, it will be ignored.
+
+<h2 id="requires.TlsRequires.request_application_cert">request_application_cert</h2>
+
+```python
+TlsRequires.request_application_cert(cn, sans)
+```
+
+Request an application certificate and key be generated for the given
+common name (`cn`) and list of alternative names (`sans` ) of this
+unit and all peer units. All units will share a single certificates.
 
