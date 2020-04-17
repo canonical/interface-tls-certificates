@@ -285,6 +285,9 @@ class TlsProvides(Endpoint):
                                                       request.sans)
                 request.set_cert(cert, key)
         ```
+
+        :returns: List of certificate requests.
+        :rtype: [CertificateRequest, ]
         """
         return [req for req in self.new_requests
                 if req.cert_type == 'application']

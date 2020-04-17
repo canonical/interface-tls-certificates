@@ -37,6 +37,11 @@ class CertificateRequest(dict):
 
     @property
     def unit_name(self):
+        """Name of this unit.
+
+        :returns: Name of unit
+        :rtype: str
+        """
         return self.resolve_unit_name(unit=self._unit).replace('/', '_')
 
     @property
@@ -154,12 +159,20 @@ class ApplicationCertificateRequest(CertificateRequest):
 
     @property
     def _key(self):
+        """Key to identify this cert.
+
+        :returns: cert key
+        :rtype: str
+        """
         return '{}.{}'.format(self._unit.relation.relation_id, 'app_cert')
 
     @property
     def cert(self):
         """
         The cert published for this request, if any.
+
+        :returns: Certificate
+        :rtype: Certificate or None
         """
         cert, key = None, None
         tp = self._unit.relation.to_publish
@@ -173,6 +186,11 @@ class ApplicationCertificateRequest(CertificateRequest):
 
     @property
     def is_handled(self):
+        """Whether the certificate has been handled.
+
+        :returns: If the cert has been handled
+        :rtype: bool
+        """
         has_cert = self.cert is not None
         same_sans = not is_data_changed(self._key,
                                         sorted(set(self.sans or [])))
@@ -198,6 +216,11 @@ class ApplicationCertificateRequest(CertificateRequest):
 
     @property
     def _request_key(self):
+        """Key used to request cert
+
+        :returns: Key used to request cert
+        :rtype: str
+        """
         return 'application_cert_requests'
 
     def derive_publish_key(self, unit=None):
@@ -215,6 +238,11 @@ class ApplicationCertificateRequest(CertificateRequest):
 
     @property
     def _publish_key(self):
+        """Key used to publish cert
+
+        :returns: Key used to publish cert
+        :rtype: str
+        """
         return self.derive_publish_key(unit=self._unit)
 
     def set_cert(self, cert, key):

@@ -215,7 +215,10 @@ class TlsRequires(Endpoint):
     @property
     def application_certs(self):
         """
-        List of [Certificate][] instances for all available application certs.
+        List containg the application Certificate cert.
+
+        :returns: A list containing one certificate
+        :rtype: [Certificate()]
         """
         certs = []
         json_data = self.all_joined_units.received
@@ -229,7 +232,6 @@ class TlsRequires(Endpoint):
                 app_cert_data['cert'],
                 app_cert_data['key'])]
         return certs
-
 
     @property
     def server_certs_map(self):
