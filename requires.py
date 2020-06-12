@@ -22,6 +22,7 @@ class TlsRequires(Endpoint):
     The following flags may be set:
 
       * `{endpoint_name}.available`
+      * `{endpoint_name}.connected`
         Whenever the relation is joined.
 
       * `{endpoint_name}.ca.available`
@@ -92,6 +93,7 @@ class TlsRequires(Endpoint):
         certs_available = server_available or client_available
         certs_changed = server_changed or client_changed
 
+        set_flag(prefix + 'connected')
         set_flag(prefix + 'available')
         toggle_flag(prefix + 'ca.available', ca_available)
         toggle_flag(prefix + 'ca.changed', ca_changed)
