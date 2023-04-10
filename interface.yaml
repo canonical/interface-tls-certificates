@@ -4,3 +4,6 @@ summary: |
   to exchange certifcates.
 version: 1
 repo: https://github.com/juju-solutions/interface-tls-certificates
+ignore:
+  - .github
+  - ops
