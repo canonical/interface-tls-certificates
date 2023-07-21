@@ -101,7 +101,7 @@ class CertificatesRequires(Object):
         """Certificate instances by their `common_name`."""
         return {cert.common_name: cert for cert in self.client_certs}
 
-    def request_client_cert(self, cn, sans):
+    def request_client_cert(self, cn, sans=None):
         """Request Client certificate for charm.
 
         Request a client certificate and key be generated for the given
@@ -114,7 +114,7 @@ class CertificatesRequires(Object):
             return
         # assume we'll only be connected to one provider
         data = self.relation.data[self.model.unit]
-        requests = data.get("client_cert_requests", {})
+        requests = json.loads(data.get("client_cert_requests", "{}"))
         requests[cn] = {"sans": sans}
         data["client_cert_requests"] = json.dumps(requests)
 
