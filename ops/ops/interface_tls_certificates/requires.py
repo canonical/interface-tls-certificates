@@ -150,8 +150,12 @@ class CertificatesRequires(Object):
         """
         List of [Certificate][] instances for all available server certs.
         """
+        if not self.relation:
+            log.warning(f"Relation {self.endpoint} is not yet available.")
+            return []
         common_name = self.relation.data[self.model.unit].get("common_name")
         if common_name is None or not self.is_ready:
+            log.warning(f"Relation {self.endpoint} has yet to set 'common_name'.")
             return []
 
         certs = []
