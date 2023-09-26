@@ -1,7 +1,8 @@
 if not __package__:
     # fix relative imports when building docs
     import sys
-    __package__ = sys.modules[''].__name__
+
+    __package__ = sys.modules[""].__name__
 
 import uuid
 
@@ -76,56 +77,57 @@ class TlsRequires(Endpoint):
     [client_certs]: requires.md#requires.TlsRequires.server_certs
     """
 
-    @when('endpoint.{endpoint_name}.joined')
+    @when("endpoint.{endpoint_name}.joined")
     def joined(self):
-        self.relations[0].to_publish_raw['unit_name'] = self._unit_name
-        prefix = self.expand_name('{endpoint_name}.')
+        self.relations[0].to_publish_raw["unit_name"] = self._unit_name
+        prefix = self.expand_name("{endpoint_name}.")
         ca_available = self.root_ca_cert
-        ca_changed = ca_available and data_changed(prefix + 'ca',
-                                                   self.root_ca_cert)
+        ca_changed = ca_available and data_changed(prefix + "ca", self.root_ca_cert)
         server_available = self.server_certs
-        server_changed = server_available and data_changed(prefix + 'servers',
-                                                           self.server_certs)
+        server_changed = server_available and data_changed(
+            prefix + "servers", self.server_certs
+        )
         client_available = self.client_certs
-        client_changed = client_available and data_changed(prefix + 'clients',
-                                                           self.client_certs)
+        client_changed = client_available and data_changed(
+            prefix + "clients", self.client_certs
+        )
         certs_available = server_available or client_available
         certs_changed = server_changed or client_changed
 
-        set_flag(prefix + 'available')
-        toggle_flag(prefix + 'ca.available', ca_available)
-        toggle_flag(prefix + 'ca.changed', ca_changed)
-        toggle_flag(prefix + 'server.certs.available', server_available)
-        toggle_flag(prefix + 'server.certs.changed', server_changed)
-        toggle_flag(prefix + 'client.certs.available', client_available)
-        toggle_flag(prefix + 'client.certs.changed', client_changed)
-        toggle_flag(prefix + 'certs.available', certs_available)
-        toggle_flag(prefix + 'certs.changed', certs_changed)
+        set_flag(prefix + "available")
+        toggle_flag(prefix + "ca.available", ca_available)
+        toggle_flag(prefix + "ca.changed", ca_changed)
+        toggle_flag(prefix + "server.certs.available", server_available)
+        toggle_flag(prefix + "server.certs.changed", server_changed)
+        toggle_flag(prefix + "client.certs.available", client_available)
+        toggle_flag(prefix + "client.certs.changed", client_changed)
+        toggle_flag(prefix + "certs.available", certs_available)
+        toggle_flag(prefix + "certs.changed", certs_changed)
         # deprecated
-        toggle_flag(prefix + 'server.cert.available', self.server_certs)
-        toggle_flag(prefix + 'client.cert.available', self.get_client_cert())
-        toggle_flag(prefix + 'batch.cert.available', self.server_certs)
+        toggle_flag(prefix + "server.cert.available", self.server_certs)
+        toggle_flag(prefix + "client.cert.available", self.get_client_cert())
+        toggle_flag(prefix + "batch.cert.available", self.server_certs)
 
-    @when_not('endpoint.{endpoint_name}.joined')
+    @when_not("endpoint.{endpoint_name}.joined")
     def broken(self):
-        prefix = self.expand_name('{endpoint_name}.')
-        clear_flag(prefix + 'available')
-        clear_flag(prefix + 'ca.available')
-        clear_flag(prefix + 'ca.changed')
-        clear_flag(prefix + 'server.certs.available')
-        clear_flag(prefix + 'server.certs.changed')
-        clear_flag(prefix + 'client.certs.available')
-        clear_flag(prefix + 'client.certs.changed')
-        clear_flag(prefix + 'certs.available')
-        clear_flag(prefix + 'certs.changed')
+        prefix = self.expand_name("{endpoint_name}.")
+        clear_flag(prefix + "available")
+        clear_flag(prefix + "ca.available")
+        clear_flag(prefix + "ca.changed")
+        clear_flag(prefix + "server.certs.available")
+        clear_flag(prefix + "server.certs.changed")
+        clear_flag(prefix + "client.certs.available")
+        clear_flag(prefix + "client.certs.changed")
+        clear_flag(prefix + "certs.available")
+        clear_flag(prefix + "certs.changed")
         # deprecated
-        clear_flag(prefix + 'server.cert.available')
-        clear_flag(prefix + 'client.cert.available')
-        clear_flag(prefix + 'batch.cert.available')
+        clear_flag(prefix + "server.cert.available")
+        clear_flag(prefix + "client.cert.available")
+        clear_flag(prefix + "batch.cert.available")
 
     @property
     def _unit_name(self):
-        return hookenv.local_unit().replace('/', '_')
+        return hookenv.local_unit().replace("/", "_")
 
     @property
     def root_ca_cert(self):
@@ -134,7 +136,7 @@ class TlsRequires(Endpoint):
         """
         # only the leader of the provider should set the CA, or all units
         # had better agree
-        return self.all_joined_units.received_raw['ca']
+        return self.all_joined_units.received_raw["ca"]
 
     def get_ca(self):
         """
@@ -151,7 +153,7 @@ class TlsRequires(Endpoint):
         """
         # only the leader of the provider should set the CA, or all units
         # had better agree
-        return self.all_joined_units.received_raw['chain']
+        return self.all_joined_units.received_raw["chain"]
 
     def get_chain(self):
         """
@@ -169,7 +171,7 @@ class TlsRequires(Endpoint):
         Return a globally shared client certificate and key.
         """
         data = self.all_joined_units.received_raw
-        return (data['client.cert'], data['client.key'])
+        return (data["client.cert"], data["client.key"])
 
     def get_server_cert(self):
         """
@@ -193,23 +195,19 @@ class TlsRequires(Endpoint):
 
         # for backwards compatibility, the first cert goes in its own fields
         if self.relations:
-            common_name = self.relations[0].to_publish_raw['common_name']
-            cert = raw_data['{}.server.cert'.format(self._unit_name)]
-            key = raw_data['{}.server.key'.format(self._unit_name)]
+            common_name = self.relations[0].to_publish_raw["common_name"]
+            cert = raw_data["{}.server.cert".format(self._unit_name)]
+            key = raw_data["{}.server.key".format(self._unit_name)]
             if cert and key:
-                certs.append(Certificate('server',
-                                         common_name,
-                                         cert,
-                                         key))
+                certs.append(Certificate("server", common_name, cert, key))
 
         # subsequent requests go in the collection
-        field = '{}.processed_requests'.format(self._unit_name)
+        field = "{}.processed_requests".format(self._unit_name)
         certs_data = json_data[field] or {}
-        certs.extend(Certificate('server',
-                                 common_name,
-                                 cert['cert'],
-                                 cert['key'])
-                     for common_name, cert in certs_data.items())
+        certs.extend(
+            Certificate("server", common_name, cert["cert"], cert["key"])
+            for common_name, cert in certs_data.items()
+        )
         return certs
 
     @property
@@ -222,15 +220,15 @@ class TlsRequires(Endpoint):
         """
         certs = []
         json_data = self.all_joined_units.received
-        field = '{}.processed_application_requests'.format(self._unit_name)
+        field = "{}.processed_application_requests".format(self._unit_name)
         certs_data = json_data[field] or {}
-        app_cert_data = certs_data.get('app_data')
+        app_cert_data = certs_data.get("app_data")
         if app_cert_data:
-            certs = [Certificate(
-                'server',
-                'app_data',
-                app_cert_data['cert'],
-                app_cert_data['key'])]
+            certs = [
+                Certificate(
+                    "server", "app_data", app_cert_data["cert"], app_cert_data["key"]
+                )
+            ]
         return certs
 
     @property
@@ -253,13 +251,12 @@ class TlsRequires(Endpoint):
         """
         List of [Certificate][] instances for all available client certs.
         """
-        field = '{}.processed_client_requests'.format(self._unit_name)
+        field = "{}.processed_client_requests".format(self._unit_name)
         certs_data = self.all_joined_units.received[field] or {}
-        return [Certificate('client',
-                            common_name,
-                            cert['cert'],
-                            cert['key'])
-                for common_name, cert in certs_data.items()]
+        return [
+            Certificate("client", common_name, cert["cert"], cert["key"])
+            for common_name, cert in certs_data.items()
+        ]
 
     @property
     def client_certs_map(self):
@@ -284,19 +281,19 @@ class TlsRequires(Endpoint):
         # assume we'll only be connected to one provider
         to_publish_json = self.relations[0].to_publish
         to_publish_raw = self.relations[0].to_publish_raw
-        if to_publish_raw['common_name'] in (None, '', cn):
+        if to_publish_raw["common_name"] in (None, "", cn):
             # for backwards compatibility, first request goes in its own fields
-            to_publish_raw['common_name'] = cn
-            to_publish_json['sans'] = sans or []
-            cert_name = to_publish_raw.get('certificate_name') or cert_name
+            to_publish_raw["common_name"] = cn
+            to_publish_json["sans"] = sans or []
+            cert_name = to_publish_raw.get("certificate_name") or cert_name
             if cert_name is None:
                 cert_name = str(uuid.uuid4())
-            to_publish_raw['certificate_name'] = cert_name
+            to_publish_raw["certificate_name"] = cert_name
         else:
             # subsequent requests go in the collection
-            requests = to_publish_json.get('cert_requests', {})
-            requests[cn] = {'sans': sans or []}
-            to_publish_json['cert_requests'] = requests
+            requests = to_publish_json.get("cert_requests", {})
+            requests[cn] = {"sans": sans or []}
+            to_publish_json["cert_requests"] = requests
 
     def add_request_server_cert(self, cn, sans):
         """
@@ -323,9 +320,9 @@ class TlsRequires(Endpoint):
             return
         # assume we'll only be connected to one provider
         to_publish_json = self.relations[0].to_publish
-        requests = to_publish_json.get('client_cert_requests', {})
-        requests[cn] = {'sans': sans}
-        to_publish_json['client_cert_requests'] = requests
+        requests = to_publish_json.get("client_cert_requests", {})
+        requests[cn] = {"sans": sans}
+        to_publish_json["client_cert_requests"] = requests
 
     def request_application_cert(self, cn, sans):
         """
@@ -337,6 +334,6 @@ class TlsRequires(Endpoint):
             return
         # assume we'll only be connected to one provider
         to_publish_json = self.relations[0].to_publish
-        requests = to_publish_json.get('application_cert_requests', {})
-        requests[cn] = {'sans': sans}
-        to_publish_json['application_cert_requests'] = requests
+        requests = to_publish_json.get("application_cert_requests", {})
+        requests[cn] = {"sans": sans}
+        to_publish_json["application_cert_requests"] = requests

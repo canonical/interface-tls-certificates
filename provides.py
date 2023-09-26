@@ -1,16 +1,14 @@
 if not __package__:
     # fix relative imports when building docs
     import sys
-    __package__ = sys.modules[''].__name__
+
+    __package__ = sys.modules[""].__name__
 
 from charms.reactive import Endpoint
 from charms.reactive import when, when_not
 from charms.reactive import set_flag, clear_flag, toggle_flag
 
-from .tls_certificates_common import (
-    ApplicationCertificateRequest,
-    CertificateRequest
-)
+from .tls_certificates_common import ApplicationCertificateRequest, CertificateRequest
 
 
 class TlsProvides(Endpoint):
@@ -42,32 +40,41 @@ class TlsProvides(Endpoint):
     [new_client_requests]: provides.md#provides.TlsProvides.new_client_requests
     """
 
-    @when('endpoint.{endpoint_name}.joined')
+    @when("endpoint.{endpoint_name}.joined")
     def joined(self):
-        set_flag(self.expand_name('{endpoint_name}.available'))
-        toggle_flag(self.expand_name('{endpoint_name}.certs.requested'),
-                    self.new_requests)
-        toggle_flag(self.expand_name('{endpoint_name}.server.certs.requested'),
-                    self.new_server_requests)
-        toggle_flag(self.expand_name('{endpoint_name}.client.certs.requested'),
-                    self.new_client_requests)
+        set_flag(self.expand_name("{endpoint_name}.available"))
         toggle_flag(
-            self.expand_name('{endpoint_name}.application.certs.requested'),
-            self.new_application_requests)
+            self.expand_name("{endpoint_name}.certs.requested"), self.new_requests
+        )
+        toggle_flag(
+            self.expand_name("{endpoint_name}.server.certs.requested"),
+            self.new_server_requests,
+        )
+        toggle_flag(
+            self.expand_name("{endpoint_name}.client.certs.requested"),
+            self.new_client_requests,
+        )
+        toggle_flag(
+            self.expand_name("{endpoint_name}.application.certs.requested"),
+            self.new_application_requests,
+        )
         # For backwards compatibility, set the old "cert" flags as well
-        toggle_flag(self.expand_name('{endpoint_name}.server.cert.requested'),
-                    self.new_server_requests)
-        toggle_flag(self.expand_name('{endpoint_name}.client.cert.requested'),
-                    self.new_client_requests)
+        toggle_flag(
+            self.expand_name("{endpoint_name}.server.cert.requested"),
+            self.new_server_requests,
+        )
+        toggle_flag(
+            self.expand_name("{endpoint_name}.client.cert.requested"),
+            self.new_client_requests,
+        )
 
-    @when_not('endpoint.{endpoint_name}.joined')
+    @when_not("endpoint.{endpoint_name}.joined")
     def broken(self):
-        clear_flag(self.expand_name('{endpoint_name}.available'))
-        clear_flag(self.expand_name('{endpoint_name}.certs.requested'))
-        clear_flag(self.expand_name('{endpoint_name}.server.certs.requested'))
-        clear_flag(self.expand_name('{endpoint_name}.client.certs.requested'))
-        clear_flag(
-            self.expand_name('{endpoint_name}.application.certs.requested'))
+        clear_flag(self.expand_name("{endpoint_name}.available"))
+        clear_flag(self.expand_name("{endpoint_name}.certs.requested"))
+        clear_flag(self.expand_name("{endpoint_name}.server.certs.requested"))
+        clear_flag(self.expand_name("{endpoint_name}.client.certs.requested"))
+        clear_flag(self.expand_name("{endpoint_name}.application.certs.requested"))
 
     def set_ca(self, certificate_authority):
         """
@@ -75,7 +82,7 @@ class TlsProvides(Endpoint):
         """
         for relation in self.relations:
             # All the clients get the same CA, so send it to them.
-            relation.to_publish_raw['ca'] = certificate_authority
+            relation.to_publish_raw["ca"] = certificate_authority
 
     def set_chain(self, chain):
         """
@@ -83,7 +90,7 @@ class TlsProvides(Endpoint):
         """
         for relation in self.relations:
             # All the clients get the same chain, so send it to them.
-            relation.to_publish_raw['chain'] = chain
+            relation.to_publish_raw["chain"] = chain
 
     def set_client_cert(self, cert, key):
         """
@@ -92,10 +99,12 @@ class TlsProvides(Endpoint):
         Publish a globally shared client cert and key.
         """
         for relation in self.relations:
-            relation.to_publish_raw.update({
-                'client.cert': cert,
-                'client.key': key,
-            })
+            relation.to_publish_raw.update(
+                {
+                    "client.cert": cert,
+                    "client.key": key,
+                }
+            )
 
     def set_server_cert(self, scope, cert, key):
         """
@@ -114,9 +123,9 @@ class TlsProvides(Endpoint):
         pass
 
     def add_server_cert(self, scope, cn, cert, key):
-        '''
+        """
         Deprecated.  Use `request.set_cert()` instead.
-        '''
+        """
         self.set_server_cert(scope, cert, key)
 
     def get_server_requests(self):
@@ -154,46 +163,50 @@ class TlsProvides(Endpoint):
         requests = []
         for unit in self.all_joined_units:
             # handle older single server cert request
-            if unit.received_raw['common_name']:
-                requests.append(CertificateRequest(
-                    unit,
-                    'server',
-                    unit.received_raw['certificate_name'],
-                    unit.received_raw['common_name'],
-                    unit.received['sans'],
-                ))
+            if unit.received_raw["common_name"]:
+                requests.append(
+                    CertificateRequest(
+                        unit,
+                        "server",
+                        unit.received_raw["certificate_name"],
+                        unit.received_raw["common_name"],
+                        unit.received["sans"],
+                    )
+                )
 
             # handle mutli server cert requests
-            reqs = unit.received['cert_requests'] or {}
+            reqs = unit.received["cert_requests"] or {}
             for common_name, req in reqs.items():
-                requests.append(CertificateRequest(
-                    unit,
-                    'server',
-                    common_name,
-                    common_name,
-                    req['sans'],
-                ))
+                requests.append(
+                    CertificateRequest(
+                        unit,
+                        "server",
+                        common_name,
+                        common_name,
+                        req["sans"],
+                    )
+                )
 
             # handle client cert requests
-            reqs = unit.received['client_cert_requests'] or {}
+            reqs = unit.received["client_cert_requests"] or {}
             for common_name, req in reqs.items():
-                requests.append(CertificateRequest(
-                    unit,
-                    'client',
-                    common_name,
-                    common_name,
-                    req['sans'],
-                ))
+                requests.append(
+                    CertificateRequest(
+                        unit,
+                        "client",
+                        common_name,
+                        common_name,
+                        req["sans"],
+                    )
+                )
             # handle application cert requests
-            reqs = unit.received['application_cert_requests'] or {}
+            reqs = unit.received["application_cert_requests"] or {}
             for common_name, req in reqs.items():
-                requests.append(ApplicationCertificateRequest(
-                    unit,
-                    'application',
-                    common_name,
-                    common_name,
-                    req['sans']
-                ))
+                requests.append(
+                    ApplicationCertificateRequest(
+                        unit, "application", common_name, common_name, req["sans"]
+                    )
+                )
         return requests
 
     @property
@@ -242,7 +255,7 @@ class TlsProvides(Endpoint):
                 request.set_cert(cert, key)
         ```
         """
-        return [req for req in self.new_requests if req.cert_type == 'server']
+        return [req for req in self.new_requests if req.cert_type == "server"]
 
     @property
     def new_client_requests(self):
@@ -264,7 +277,7 @@ class TlsProvides(Endpoint):
                 request.set_cert(cert, key)
         ```
         """
-        return [req for req in self.new_requests if req.cert_type == 'client']
+        return [req for req in self.new_requests if req.cert_type == "client"]
 
     @property
     def new_application_requests(self):
@@ -289,8 +302,7 @@ class TlsProvides(Endpoint):
         :returns: List of certificate requests.
         :rtype: [CertificateRequest, ]
         """
-        return [req for req in self.new_requests
-                if req.cert_type == 'application']
+        return [req for req in self.new_requests if req.cert_type == "application"]
 
     @property
     def all_published_certs(self):
