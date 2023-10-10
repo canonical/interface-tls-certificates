@@ -180,3 +180,39 @@ class CertificatesRequires(Object):
     def server_certs_map(self) -> Mapping[str, Certificate]:
         """Certificate instances by their `common_name`."""
         return {cert.common_name: cert for cert in self.server_certs}
+
+    @property
+    def intermediate_certs(self) -> List[Certificate]:
+        """Certificate instances for all available intermediate CA certs."""
+        if not self.is_ready:
+            return []
+
+        field = f"{self._unit_name}.processed_intermediate_requests"
+        certs_json = getattr(self._data, field, "{}")
+        certs_data = json.loads(certs_json)
+        return [
+            Certificate(cert_type="intermediate", common_name=common_name, **cert)
+            for common_name, cert in certs_data.items()
+        ]
+
+    @property
+    def intermediate_certs_map(self) -> Mapping[str, Certificate]:
+        """Certificate instances by their `common_name`."""
+        return {cert.common_name: cert for cert in self.intermediate_certs}
+
+    def request_intermediate_cert(self, cn, sans=None):
+        """Request intermediate CA certificate for charm.
+
+        Request an intermediate CA certificate and key be generated for the given
+        common name (`cn`) and list of alternative names (`sans`).
+        This can be called multiple times to request more than one intermediate CA
+        certificate, although the common names must be unique.  If called
+        again with the same common name, it will be ignored.
+        """
+        if not self.relation:
+            return
+        # assume we'll only be connected to one provider
+        data = self.relation.data[self.model.unit]
+        requests = json.loads(data.get("intermediate_cert_requests", "{}"))
+        requests[cn] = {"sans": sans}
+        data["intermediate_cert_requests"] = json.dumps(requests)

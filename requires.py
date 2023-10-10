@@ -91,8 +91,12 @@ class TlsRequires(Endpoint):
         client_changed = client_available and data_changed(
             prefix + "clients", self.client_certs
         )
-        certs_available = server_available or client_available
-        certs_changed = server_changed or client_changed
+        intermediate_available = self.intermediate_certs
+        intermediate_changed = intermediate_available and data_changed(
+            prefix + "intermediates", self.intermediate_certs
+        )
+        certs_available = server_available or client_available or intermediate_available
+        certs_changed = server_changed or client_changed or intermediate_changed
 
         set_flag(prefix + "available")
         toggle_flag(prefix + "ca.available", ca_available)
@@ -101,6 +105,8 @@ class TlsRequires(Endpoint):
         toggle_flag(prefix + "server.certs.changed", server_changed)
         toggle_flag(prefix + "client.certs.available", client_available)
         toggle_flag(prefix + "client.certs.changed", client_changed)
+        toggle_flag(prefix + "intermediate.certs.available", intermediate_available)
+        toggle_flag(prefix + "intermediate.certs.changed", intermediate_changed)
         toggle_flag(prefix + "certs.available", certs_available)
         toggle_flag(prefix + "certs.changed", certs_changed)
         # deprecated
@@ -118,6 +124,8 @@ class TlsRequires(Endpoint):
         clear_flag(prefix + "server.certs.changed")
         clear_flag(prefix + "client.certs.available")
         clear_flag(prefix + "client.certs.changed")
+        clear_flag(prefix + "intermediate.certs.available")
+        clear_flag(prefix + "intermediate.certs.changed")
         clear_flag(prefix + "certs.available")
         clear_flag(prefix + "certs.changed")
         # deprecated
@@ -265,6 +273,34 @@ class TlsRequires(Endpoint):
         """
         return {cert.common_name: cert for cert in self.client_certs}
 
+    @property
+    def intermediate_certs(self):
+        """
+        List of [Certificate][] instances for all available intermediate CA certs.
+        """
+        certs = []
+        json_data = self.all_joined_units.received
+        field = "{}.processed_intermediate_requests".format(self._unit_name)
+        certs_data = json_data[field] or {}
+        app_cert_data = certs_data.get("app_data")
+        if app_cert_data:
+            certs = [
+                Certificate(
+                    "intermediate",
+                    "app_data",
+                    app_cert_data["cert"],
+                    app_cert_data["key"],
+                )
+            ]
+        return certs
+
+    @property
+    def intermediate_certs_map(self):
+        """
+        Mapping of intermediate CA [Certificate][] instances by their `common_name`.
+        """
+        return {cert.common_name: cert for cert in self.intermediate_certs}
+
     def request_server_cert(self, cn, sans=None, cert_name=None):
         """
         Request a server certificate and key be generated for the given
@@ -337,3 +373,20 @@ class TlsRequires(Endpoint):
         requests = to_publish_json.get("application_cert_requests", {})
         requests[cn] = {"sans": sans}
         to_publish_json["application_cert_requests"] = requests
+
+    def request_intermediate_cert(self, cn, sans):
+        """
+        Request an intermediate CA certificate and key be generated for the given
+        common name (`cn`) and list of alternative names (`sans`).
+
+        This can be called multiple times to request more than one client
+        certificate, although the common names must be unique.  If called
+        again with the same common name, it will be ignored.
+        """
+        if not self.relations:
+            return
+        # assume we'll only be connected to one provider
+        to_publish_json = self.relations[0].to_publish
+        requests = to_publish_json.get("intermediate_cert_requests", {})
+        requests[cn] = {"sans": sans}
+        to_publish_json["intermediate_cert_requests"] = requests

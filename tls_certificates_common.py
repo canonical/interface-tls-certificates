@@ -80,6 +80,8 @@ class CertificateRequest(dict):
             return "{}.processed_requests".format(self.unit_name)
         elif self.cert_type == "client":
             return "{}.processed_client_requests".format(self.unit_name)
+        elif self.cert_type == "intermediate":
+            return "{}.processed_intermediate_requests".format(self.unit_name)
         raise ValueError("Unknown cert_type: {}".format(self.cert_type))
 
     @property

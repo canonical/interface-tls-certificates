@@ -32,6 +32,14 @@ class TlsProvides(Endpoint):
         When there are new client certificate requests to be processed.
         The requests can be accessed via [new_client_requests][].
 
+      * `{endpoint_name}.application.certs.requested`
+        When there are new application certificate requests to be processed.
+        The requests can be accessed via [new_application_requests][].
+
+      * `{endpoint_name}.intermediate.certs.requested`
+        When there are new intermediate CA certificate requests to be processed.
+        The requests can be accessed via [new_intermediate_requests][].
+
     [Certificate]: common.md#tls_certificates_common.Certificate
     [CertificateRequest]: common.md#tls_certificates_common.CertificateRequest
     [all_requests]: provides.md#provides.TlsProvides.all_requests
@@ -58,6 +66,10 @@ class TlsProvides(Endpoint):
             self.expand_name("{endpoint_name}.application.certs.requested"),
             self.new_application_requests,
         )
+        toggle_flag(
+            self.expand_name("{endpoint_name}.intermediate.certs.requested"),
+            self.new_intermediate_requests,
+        )
         # For backwards compatibility, set the old "cert" flags as well
         toggle_flag(
             self.expand_name("{endpoint_name}.server.cert.requested"),
@@ -75,6 +87,7 @@ class TlsProvides(Endpoint):
         clear_flag(self.expand_name("{endpoint_name}.server.certs.requested"))
         clear_flag(self.expand_name("{endpoint_name}.client.certs.requested"))
         clear_flag(self.expand_name("{endpoint_name}.application.certs.requested"))
+        clear_flag(self.expand_name("{endpoint_name}.intermediate.certs.requested"))
 
     def set_ca(self, certificate_authority):
         """
@@ -179,11 +192,7 @@ class TlsProvides(Endpoint):
             for common_name, req in reqs.items():
                 requests.append(
                     CertificateRequest(
-                        unit,
-                        "server",
-                        common_name,
-                        common_name,
-                        req["sans"],
+                        unit, "server", common_name, common_name, req["sans"]
                     )
                 )
 
@@ -192,11 +201,7 @@ class TlsProvides(Endpoint):
             for common_name, req in reqs.items():
                 requests.append(
                     CertificateRequest(
-                        unit,
-                        "client",
-                        common_name,
-                        common_name,
-                        req["sans"],
+                        unit, "client", common_name, common_name, req["sans"]
                     )
                 )
             # handle application cert requests
@@ -205,6 +210,14 @@ class TlsProvides(Endpoint):
                 requests.append(
                     ApplicationCertificateRequest(
                         unit, "application", common_name, common_name, req["sans"]
+                    )
+                )
+            # handle intermediate CA cert requests
+            reqs = unit.receive["intermediate_cert_requests"] or {}
+            for common_name, req in reqs.items():
+                requests.append(
+                    CertificateRequest(
+                        unit, "intermediate", common_name, common_name, req["sans"]
                     )
                 )
         return requests
@@ -303,6 +316,28 @@ class TlsProvides(Endpoint):
         :rtype: [CertificateRequest, ]
         """
         return [req for req in self.new_requests if req.cert_type == "application"]
+
+    @property
+    def new_intermediate_requests(self):
+        """
+        Filtered view of [new_requests][] that only includes intermediate CA cert
+        requests.
+
+        Each will be an instance of [CertificateRequest][].
+
+        Example usage:
+
+        ```python
+        @when('tls.intermediate.certs.requested')
+        def gen_intermediate_certs():
+            tls = endpoint_from_flag('tls.intermediate.certs.requested')
+            for request in tls.new_intermediate_requests:
+                cert, key = generate_intermediate_cert(request.common_name,
+                                                       request.sans)
+                request.set_cert(cert, key)
+        ```
+        """
+        return [req for req in self.new_requests if req.cert_type == "intermediate"]
 
     @property
     def all_published_certs(self):

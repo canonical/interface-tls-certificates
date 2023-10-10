@@ -199,3 +199,42 @@ def test_request_server_certs(certificates_requirer):
             relation.data[certificates_requirer.model.unit]["cert_requests"]
         )
         assert remainder["system:kube-controller"] == {"sans": ["my.ctl.service"]}
+
+
+def test_intermediate_certs(certificates_requirer, relation_data, mock_ca_cert, tmpdir):
+    with mock.patch.object(
+        CertificatesRequires, "relation", new_callable=mock.PropertyMock
+    ) as mock_prop:
+        relation = mock_prop.return_value
+        relation.units = ["remote/0"]
+        relation.data = {"remote/0": relation_data}
+
+        assert isinstance(certificates_requirer.intermediate_certs, list)
+        assert len(certificates_requirer.intermediate_certs) == 1
+        first = certificates_requirer.intermediate_certs[0]
+        assert first.cert_type == "intermediate"
+        assert first.common_name == "127.0.0.1"
+        assert first.key == "FAKEKEY"
+        assert first.cert == "FAKECERT"
+
+        assert isinstance(certificates_requirer.intermediate_certs_map, dict)
+        assert len(certificates_requirer.intermediate_certs_map) == 1
+        first = certificates_requirer.intermediate_certs_map["127.0.0.1"]
+        assert first.cert_type == "intermediate"
+        assert first.common_name == "127.0.0.1"
+        assert first.key == "FAKEKEY"
+        assert first.cert == "FAKECERT"
+
+
+def test_request_intermediate_certs(certificates_requirer):
+    with mock.patch.object(
+        CertificatesRequires, "relation", new_callable=mock.PropertyMock
+    ) as mock_prop:
+        relation = mock_prop.return_value
+        relation.units = ["remote/0", certificates_requirer.model.unit]
+        relation.data = defaultdict(defaultdict)
+        certificates_requirer.request_intermediate_cert("127.0.0.1", ["1.1.1.1"])
+        request = relation.data[certificates_requirer.model.unit][
+            "intermediate_cert_requests"
+        ]
+        assert json.loads(request) == {"127.0.0.1": {"sans": ["1.1.1.1"]}}
