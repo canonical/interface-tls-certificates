@@ -388,5 +388,5 @@ class TlsRequires(Endpoint):
         # assume we'll only be connected to one provider
         to_publish_json = self.relations[0].to_publish
         requests = to_publish_json.get("intermediate_cert_requests", {})
-        requests[cn] = {"sans": sans}
+        requests[cn] = {"sans": sans or []}
         to_publish_json["intermediate_cert_requests"] = requests

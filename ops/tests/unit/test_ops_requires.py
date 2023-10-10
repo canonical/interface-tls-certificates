@@ -234,7 +234,11 @@ def test_request_intermediate_certs(certificates_requirer):
         relation.units = ["remote/0", certificates_requirer.model.unit]
         relation.data = defaultdict(defaultdict)
         certificates_requirer.request_intermediate_cert("127.0.0.1", ["1.1.1.1"])
+        certificates_requirer.request_intermediate_cert("nosans")
         request = relation.data[certificates_requirer.model.unit][
             "intermediate_cert_requests"
         ]
-        assert json.loads(request) == {"127.0.0.1": {"sans": ["1.1.1.1"]}}
+        assert json.loads(request) == {
+            "127.0.0.1": {"sans": ["1.1.1.1"]},
+            "nosans": {"sans": []},
+        }

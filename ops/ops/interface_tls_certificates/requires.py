@@ -200,7 +200,7 @@ class CertificatesRequires(Object):
         """Certificate instances by their `common_name`."""
         return {cert.common_name: cert for cert in self.intermediate_certs}
 
-    def request_intermediate_cert(self, cn, sans=None):
+    def request_intermediate_cert(self, cn: str, sans: Optional[List[str]] = None):
         """Request intermediate CA certificate for charm.
 
         Request an intermediate CA certificate and key be generated for the given
@@ -214,5 +214,5 @@ class CertificatesRequires(Object):
         # assume we'll only be connected to one provider
         data = self.relation.data[self.model.unit]
         requests = json.loads(data.get("intermediate_cert_requests", "{}"))
-        requests[cn] = {"sans": sans}
+        requests[cn] = {"sans": sans or []}
         data["intermediate_cert_requests"] = json.dumps(requests)
