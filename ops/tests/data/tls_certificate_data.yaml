@@ -250,3 +250,4 @@ test_1.server.key: |
   6XxaTFVYJUnHiWJ7gRB1Dfud
   -----END PRIVATE KEY-----
 private-address: 10.246.154.191
+test_0.processed_intermediate_requests: '{"127.0.0.1": {"cert": "FAKECERT", "key": "FAKEKEY"}}'
