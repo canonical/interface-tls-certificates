@@ -213,7 +213,7 @@ class TlsProvides(Endpoint):
                     )
                 )
             # handle intermediate CA cert requests
-            reqs = unit.receive["intermediate_cert_requests"] or {}
+            reqs = unit.received["intermediate_cert_requests"] or {}
             for common_name, req in reqs.items():
                 requests.append(
                     CertificateRequest(
