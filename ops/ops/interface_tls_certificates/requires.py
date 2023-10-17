@@ -83,6 +83,15 @@ class CertificatesRequires(Object):
         return self._data.ca
 
     @property
+    def chain(self):
+        """Intermediate certificates used to connect client/server certificates
+        to the root CA."""
+        if not self.is_ready:
+            return None
+
+        return self._data.chain
+
+    @property
     def client_certs(self) -> List[Certificate]:
         """Certificate instances for all available client certs."""
         if not self.is_ready:
@@ -92,14 +101,28 @@ class CertificatesRequires(Object):
         certs_json = getattr(self._data, field, "{}")
         certs_data = json.loads(certs_json)
         return [
-            Certificate(cert_type="client", common_name=common_name, **cert)
-            for common_name, cert in certs_data.items()
+            Certificate(
+                cert_type="client",
+                common_name=common_name,
+                cert=self.build_chain(cert_data.get("cert")),
+                key=cert_data.get("key"),
+            )
+            for common_name, cert_data in certs_data.items()
         ]
 
     @property
     def client_certs_map(self) -> Mapping[str, Certificate]:
         """Certificate instances by their `common_name`."""
         return {cert.common_name: cert for cert in self.client_certs}
+
+    def build_chain(self, cert) -> str:
+        """Build a certificate chain. This will include the provided
+        client/server cert, along with additional intermediate certificates
+        that are needed to connect the client/server cert back to the root CA.
+        """
+        if self.chain:
+            cert += "\n" + self.chain
+        return cert
 
     def request_client_cert(self, cn, sans=None):
         """Request Client certificate for charm.
@@ -164,7 +187,10 @@ class CertificatesRequires(Object):
         if cert and key:
             certs.append(
                 Certificate(
-                    cert_type="server", common_name=common_name, cert=cert, key=key
+                    cert_type="server",
+                    common_name=common_name,
+                    cert=self.build_chain(cert),
+                    key=key,
                 )
             )
 
@@ -172,8 +198,13 @@ class CertificatesRequires(Object):
         certs_json = getattr(self._data, field, "{}")
         certs_data = json.loads(certs_json)
         return certs + [
-            Certificate(cert_type="server", common_name=common_name, **cert)
-            for common_name, cert in certs_data.items()
+            Certificate(
+                cert_type="server",
+                common_name=common_name,
+                cert=self.build_chain(cert_data.get("cert")),
+                key=cert_data.get("key"),
+            )
+            for common_name, cert_data in certs_data.items()
         ]
 
     @property

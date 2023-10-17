@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Extra, Field, StrictStr
 
 
@@ -14,5 +16,6 @@ class Data(BaseModel, extra=Extra.allow):
     """Databag from the relation."""
 
     ca: StrictStr = Field(alias="ca")
+    chain: Optional[StrictStr] = Field(None, alias="chain")
     client_cert: StrictStr = Field(alias="client.cert")
     client_key: StrictStr = Field(alias="client.key")
