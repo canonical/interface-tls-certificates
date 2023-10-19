@@ -104,8 +104,9 @@ class CertificatesRequires(Object):
             Certificate(
                 cert_type="client",
                 common_name=common_name,
-                cert=self.build_chain(cert_data.get("cert")),
+                cert=cert_data.get("cert"),
                 key=cert_data.get("key"),
+                chain=self.chain,
             )
             for common_name, cert_data in certs_data.items()
         ]
@@ -114,15 +115,6 @@ class CertificatesRequires(Object):
     def client_certs_map(self) -> Mapping[str, Certificate]:
         """Certificate instances by their `common_name`."""
         return {cert.common_name: cert for cert in self.client_certs}
-
-    def build_chain(self, cert) -> str:
-        """Build a certificate chain. This will include the provided
-        client/server cert, along with additional intermediate certificates
-        that are needed to connect the client/server cert back to the root CA.
-        """
-        if self.chain:
-            cert += "\n" + self.chain
-        return cert
 
     def request_client_cert(self, cn, sans=None):
         """Request Client certificate for charm.
@@ -189,8 +181,9 @@ class CertificatesRequires(Object):
                 Certificate(
                     cert_type="server",
                     common_name=common_name,
-                    cert=self.build_chain(cert),
+                    cert=cert,
                     key=key,
+                    chain=self.chain,
                 )
             )
 
@@ -201,8 +194,9 @@ class CertificatesRequires(Object):
             Certificate(
                 cert_type="server",
                 common_name=common_name,
-                cert=self.build_chain(cert_data.get("cert")),
+                cert=cert_data.get("cert"),
                 key=cert_data.get("key"),
+                chain=self.chain,
             )
             for common_name, cert_data in certs_data.items()
         ]

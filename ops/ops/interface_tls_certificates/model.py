@@ -11,6 +11,13 @@ class Certificate(BaseModel):
     cert: StrictStr
     key: StrictStr
 
+    def __init__(self, cert_type, common_name, cert, key, chain=None):
+        if chain:
+            cert += "\n" + chain
+        super().__init__(
+            cert_type=cert_type, common_name=common_name, cert=cert, key=key
+        )
+
 
 class Data(BaseModel, extra=Extra.allow):
     """Databag from the relation."""
