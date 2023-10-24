@@ -83,6 +83,15 @@ class CertificatesRequires(Object):
         return self._data.ca
 
     @property
+    def chain(self):
+        """Intermediate certificates used to connect client/server certificates
+        to the root CA."""
+        if not self.is_ready:
+            return None
+
+        return self._data.chain
+
+    @property
     def client_certs(self) -> List[Certificate]:
         """Certificate instances for all available client certs."""
         if not self.is_ready:
@@ -92,8 +101,14 @@ class CertificatesRequires(Object):
         certs_json = getattr(self._data, field, "{}")
         certs_data = json.loads(certs_json)
         return [
-            Certificate(cert_type="client", common_name=common_name, **cert)
-            for common_name, cert in certs_data.items()
+            Certificate(
+                cert_type="client",
+                common_name=common_name,
+                cert=cert_data.get("cert"),
+                key=cert_data.get("key"),
+                chain=self.chain,
+            )
+            for common_name, cert_data in certs_data.items()
         ]
 
     @property
@@ -164,7 +179,11 @@ class CertificatesRequires(Object):
         if cert and key:
             certs.append(
                 Certificate(
-                    cert_type="server", common_name=common_name, cert=cert, key=key
+                    cert_type="server",
+                    common_name=common_name,
+                    cert=cert,
+                    key=key,
+                    chain=self.chain,
                 )
             )
 
@@ -172,8 +191,14 @@ class CertificatesRequires(Object):
         certs_json = getattr(self._data, field, "{}")
         certs_data = json.loads(certs_json)
         return certs + [
-            Certificate(cert_type="server", common_name=common_name, **cert)
-            for common_name, cert in certs_data.items()
+            Certificate(
+                cert_type="server",
+                common_name=common_name,
+                cert=cert_data.get("cert"),
+                key=cert_data.get("key"),
+                chain=self.chain,
+            )
+            for common_name, cert_data in certs_data.items()
         ]
 
     @property
