@@ -101,9 +101,10 @@ def test_server_certs(certificates_requirer, relation_data):
         CertificatesRequires, "relation", new_callable=mock.PropertyMock
     ) as mock_prop:
         relation = mock_prop.return_value
-        relation.units = ["remote/0", certificates_requirer.model.unit]
+        relation.units = ["remote/0", "remote/1", certificates_requirer.model.unit]
         relation.data = {
-            "remote/0": relation_data,
+            "remote/0": {},  # missing data in the first relation
+            "remote/1": relation_data,
             certificates_requirer.model.unit: {"common_name": "system:kube-apiserver"},
         }
 

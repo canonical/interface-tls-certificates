@@ -42,7 +42,10 @@ class CertificatesRequires(Object):
     @cached_property
     def _raw_data(self):
         if self.relation and self.relation.units:
-            return self.relation.data[list(self.relation.units)[0]]
+            data = {}
+            for unit in self.relation.units:
+                data.update(self.relation.data[unit])
+            return data
         return None
 
     @cached_property
