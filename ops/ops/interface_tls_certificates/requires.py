@@ -159,7 +159,7 @@ class CertificatesRequires(Object):
             data["certificate_name"] = cert_name
         else:
             # subsequent requests go in the collection
-            requests = data.get("cert_requests", {})
+            requests = json.loads(data.get("cert_requests", "{}"))
             requests[cn] = {"sans": sans or []}
             data["cert_requests"] = json.dumps(requests)
 
